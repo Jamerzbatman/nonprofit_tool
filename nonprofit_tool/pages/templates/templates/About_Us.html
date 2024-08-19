@@ -1,0 +1,49 @@
+{% extends 'base/basePages.html' %}
+{% block title %}
+{{ title_text }}
+{% endblock %}
+
+{% block content %}
+
+    <header>
+        <h1>About Us</h1>
+
+    <div class="container">
+
+        <section class="about-section">
+            <h2>{{ HereForYouMain_text }}</h2>
+            <p>
+                {{ HereForYou_text }}
+            </p>
+            <p>
+               {{ Change_text }}
+            </p>
+        </section>
+
+        <section class="about-section">
+            <h2>{{ FixingMain_text }}</h2>
+            <p>
+                {{ Fixing_text }}
+            </p>
+            <p>
+                {{ Fixing2_text }}
+            </p>
+        </section>
+
+        <section class="about-section">
+            <h2>{{ SuccessMain_text }}</h2>
+            <p>
+                {{ Success_text }}
+            </p>
+            <p>
+                {{ Success1_text }}
+            </p>
+        </section>
+
+        <div class="callout">
+            <p><strong>{{ anotherTool_text }}</strong> {{ anotherTool1_text }}Let us help you do more good.</p>
+        </div>
+
+    </div>
+
+{% endblock %}

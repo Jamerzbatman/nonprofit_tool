@@ -25,6 +25,7 @@ INSTALLED_APPS = [
     'pages',
     'dashboard',
     'bootstrap4',
+    'organization',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
