@@ -1,0 +1,40 @@
+<div class="container mt-5">
+    <!-- Form -->
+    <form id="organization-form" method="post" action="{% url 'add_edit_organization' %}">
+        {% csrf_token %}
+        {{ OrganizationForm.as_p }}
+        <button type="submit" class="btn btn-primary">Submit</button>
+    </form>
+</div>
+
+
+<script>
+    $(document).ready(function() {
+        $('#organization-form').on('submit', function(event) {
+            event.preventDefault(); // Prevent the default form submission
+
+            $.ajax({
+                url: $(this).attr('action'),
+                type: 'POST',
+                data: $(this).serialize(),
+                success: function(response) {
+                    if (response.success) {
+                        alertMessage(response.message, 'alert alert-success');
+                    }
+                },
+                error: function(xhr) {
+                    var errors = xhr.responseJSON.errors;
+                    var errorMessages = '';
+                    if (errors) {
+                        $.each(errors, function(field, messages) {
+                            errorMessages += messages.join(' ') + '<br>';
+                        });
+                    } else {
+                        errorMessages = 'An unexpected error occurred.';
+                    }
+                    alertMessage(errorMessages, 'alert alert-error');
+                }
+            });
+        });
+    });
+</script>

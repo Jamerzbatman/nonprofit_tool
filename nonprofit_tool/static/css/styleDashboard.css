@@ -180,6 +180,33 @@ a:hover {
     color: #e5e5e5;
     margin-top: 0;
 }
+
+
+
+
+/* Styling the question mark icon */
+.fas.fa-question-circle {
+    font-size: 12px; /* Make it smaller */
+    color: #555; /* Subtle color */
+    opacity: 0.4; /* Make it more transparent */
+    transition: color 0.3s ease, opacity 0.3s ease; /* Smooth transition */
+    margin-left: 5px; /* Space from adjacent text */
+}
+
+.fas.fa-question-circle:hover {
+    color: #bbb; /* Lighten on hover */
+    opacity: 0.8; /* Increase opacity on hover */
+}
+
+/* Custom styling for Bootstrap tooltips */
+.tooltip-inner {
+    background-color: #333; /* Dark background */
+    color: #e5e5e5; /* Light text */
+    font-size: 12px; /* Smaller font size */
+}
+
+
+
 /* Responsive styles */
 @media (max-width: 992px) {
     .sidebar {

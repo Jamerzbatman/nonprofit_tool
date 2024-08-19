@@ -23,9 +23,12 @@ ALLOWED_HOSTS = []
 INSTALLED_APPS = [
     'base',
     'pages',
+    'campaigns',
     'dashboard',
     'bootstrap4',
     'organization',
+    'questionnaires',
+    'administration',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',

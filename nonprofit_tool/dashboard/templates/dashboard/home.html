@@ -9,7 +9,7 @@
                 <div class="col-2 sidebar">
                     <ul class="nav flex-column">
                         <li class="nav-item">
-                            <a class="nav-link active" id="video-tab" data-bs-toggle="tab" href="#video-content">Video</a>
+                            <a class="nav-link active" id="dashbaord-tab" data-bs-toggle="tab" href="#dashbaord-content">Dashbaord</a>
                         </li>
 
                         <li class="nav-item">
@@ -18,9 +18,10 @@
                     </ul>
                 </div>
                 <div class="col-10 content tab-content">
-                    <div class="tab-pane fade show active" id="video-content">
+                    <div class="tab-pane fade show active" id="dashbaord-content">
                         dashbaord
                     </div>
+
 
                     <div class="tab-pane fade" id="settings-content">
                         {% include 'dashboard/superSettings_tabs.html' %}
@@ -30,29 +31,68 @@
         </div>
         
     {% else %}
-        <div class="container-fluid">
-            <div class="row">
-                <div class="col-2 sidebar">
-                    <ul class="nav flex-column">
-                        <li class="nav-item">
-                            <a class="nav-link active" id="video-tab" data-bs-toggle="tab" href="#video-content">Video</a>
-                        </li>
-
-                        <li class="nav-item">
-                            <a class="nav-link" id="settings-tab" data-bs-toggle="tab" href="#settings-content">Settings</a>
-                        </li>
-                    </ul>
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-2 sidebar">
+                <ul class="nav flex-column">
+                    <li class="nav-item">
+                        <a class="nav-link active" id="dashbaord-tab" data-bs-toggle="tab" href="#dashbaord-content">
+                            Dashboard
+                            <i class="fas fa-question-circle" data-toggle="tooltip" data-placement="right" title="Overview of your dashboard"></i>
+                        </a>
+                    </li>
+    
+                    <li class="nav-item">
+                        <a class="nav-link" id="campaigns-tab" data-bs-toggle="tab" href="#campaigns-content">
+                            Campaigns
+                            <i class="fas fa-question-circle" data-toggle="tooltip" data-placement="right" title="Manage your campaigns"></i>
+                        </a>
+                    </li>
+    
+                    <li class="nav-item">
+                        <a class="nav-link" id="questionnaires-tab" data-bs-toggle="tab" href="#questionnaires-content">
+                            Questionnaires
+                            <i class="fas fa-question-circle" data-toggle="tooltip" data-placement="right" title="View and manage questionnaires"></i>
+                        </a>
+                    </li>
+    
+                    <li class="nav-item">
+                        <a class="nav-link" id="administration-tab" data-bs-toggle="tab" href="#administration-content">
+                            Administration
+                            <i class="fas fa-question-circle" data-toggle="tooltip" data-placement="right" title="View and manage Leaders and Departments"></i>
+                        </a>
+                    </li>
+    
+                    <li class="nav-item">
+                        <a class="nav-link" id="settings-tab" data-bs-toggle="tab" href="#settings-content">
+                            Settings
+                            <i class="fas fa-question-circle" data-toggle="tooltip" data-placement="right" title="Application settings and preferences"></i>
+                        </a>
+                    </li>
+                </ul>
+            </div>
+            <div class="col-10 content tab-content">
+                <div class="tab-pane fade show active" id="dashbaord-content">
+                    Dashboard content
                 </div>
-                <div class="col-10 content tab-content">
-                    <div class="tab-pane fade show active" id="video-content">
-                        dashbaord
-                    </div>
-
-                    <div class="tab-pane fade" id="settings-content">
-                        {% include 'dashboard/userSettings_tabs.html' %}
-                    </div>
+    
+                <div class="tab-pane fade" id="campaigns-content">
+                    {% include 'campaigns/userSettings.html' %}
+                </div>
+    
+                <div class="tab-pane fade" id="questionnaires-content">
+                    {% include 'questionnaires/userSettings.html' %}
+                </div>
+    
+                <div class="tab-pane fade" id="administration-content">
+                    {% include 'administration/userSettings_tab.html' %}
+                </div>
+    
+                <div class="tab-pane fade" id="settings-content">
+                    {% include 'dashboard/userSettings_tabs.html' %}
                 </div>
             </div>
         </div>
+    </div>
     {% endif %}
 {% endblock %}
