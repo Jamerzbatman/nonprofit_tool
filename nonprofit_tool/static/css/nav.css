@@ -1,0 +1,11 @@
+.navbar {
+    background-color: #1f1f1f; /* Darker background for the navbar */
+}
+
+.navbar-brand, .nav-link {
+    color: #e0e0e0 !important; /* Light text color for navbar items */
+}
+
+.navbar-toggler-icon {
+    background-color: #e0e0e0; /* Light color for the toggler icon */
+}

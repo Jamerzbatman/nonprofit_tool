@@ -1,0 +1,457 @@
+
+<!-- Button to open the modal -->
+<div class="row">
+    <!-- Sidebar for pages -->
+    <div class="col-md-3">
+        <button  class="btn btn-secondary btn-block mb-2" data-bs-toggle="modal" data-bs-target="#addPage">Add Page</button>
+        <div id="page-list">
+            <!-- Page buttons will be populated here -->
+        </div>
+        <button id="showTemplates" class="btn btn-secondary btn-block mb-2">View Templates</button>
+        <button id="showWebSitData" class="btn btn-secondary btn-block mb-2">View WebSite Details</button>
+    </div>
+    <!-- Main content area -->
+    <div class="col-md-9">
+        <!-- Content Display Area -->
+        <div id="page-content">
+            <p>Select a page from the list to view its content here.</p>
+        </div>
+    </div>
+</div>
+
+
+<!-- Modal for editing template content -->
+<div class="modal fade" id="templateModal" tabindex="-1" aria-labelledby="templateModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="templateModalLabel">Edit Template</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="template-form" method="post" enctype="multipart/form-data">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label for="template-name" class="form-label">Template Name: <span id="template-nametext"></span></label>
+                        <input type="hidden" id="template-name" name="template_name" class="form-control" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="template-content" class="form-label">Template HTML Content:</label>
+                        <textarea id="template-content" name="template_content" class="form-control" rows="8" required></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Save Template</button>
+                </form>
+                <div id="response-template-message" style="margin-top: 20px;"></div>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- Modal for adding a new template -->
+<div class="modal fade" id="addPage" tabindex="-1" aria-labelledby="addPageLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="addPageLabel">Add New Template</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="add-template-form" method="post" enctype="multipart/form-data">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label for="new-template-name" class="form-label">Template Name:</label>
+                        <input type="text" id="new-template-name" name="template_name" class="form-control" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="new-template-content" class="form-label">Template HTML Content:</label>
+                        <textarea id="new-template-content" name="template_content" class="form-control" rows="8" required></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label for="show-in-navbar" class="form-label">Show in Navbar:</label>
+                        <input type="checkbox" id="show-in-navbar" name="show_in_navbar">
+                    </div>
+                    <button type="submit" class="btn btn-primary">Save Template</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<script>
+
+$('#settings-pages-tab').on('click', function() {
+    listPages();
+});
+// Fetch and populate template options
+function listTemplates() {
+    $.ajax({
+        url: '/list-templates/',  // Ensure this URL matches your Django URL pattern
+        method: 'GET',
+        success: function(data) {
+            const templateSelect = $('#template');
+            templateSelect.empty(); // Clear existing options
+            templateSelect.append('<option value="">Select a template</option>');
+            $.each(data.templates, function(index, template) {
+                templateSelect.append('<option value="' + template + '">' + template + '</option>');
+            });
+        },
+        error: function(xhr, status, error) {
+            console.error('Error fetching templates:', error);
+        }
+    });
+}
+
+// Handle dynamic placeholders
+$('#template').on('change', function() {
+    var templateName = $(this).val();
+    if (templateName) {
+        $.ajax({
+            url: '/get-placeholders/',  // Ensure this URL matches your Django URL pattern
+            method: 'GET',
+            data: { template: templateName },
+            success: function(data) {
+                var placeholdersHtml = '';
+                $.each(data.placeholders, function(index, placeholder) {
+                    // Use a more descriptive name for the placeholders
+                    if (placeholder.type === 'text') {
+                        placeholdersHtml += `
+                            <div class="mb-3">
+                                <label for="${index}" class="form-label">${placeholder.label}:</label>
+                                <textarea id="${index}" name="${index}" class="form-control" rows="4" placeholder="Enter ${placeholder.label.toLowerCase()} here"></textarea>
+                            </div>`;
+                    } else if (placeholder.type === 'image') {
+                        placeholdersHtml += `
+                            <div class="mb-3">
+                                <label for="${index}" class="form-label">${placeholder.label}:</label>
+                                <input type="file" id="${index}" name="${index}" class="form-control">
+                            </div>`;
+                    }
+                });
+                $('#placeholders-container').html(placeholdersHtml);
+            },
+            error: function(xhr, status, error) {
+                console.error('Error fetching placeholders:', error);
+            }
+        });
+    } else {
+        $('#placeholders-container').empty();
+    }
+});
+
+$('#page-form').on('submit', function(event) {
+    event.preventDefault(); // Prevent default form submission
+
+    const formData = new FormData(this);
+
+    $.ajax({
+        url: '/add-page/',  // Ensure this URL matches the view handling form submission
+        type: 'POST',
+        data: formData,
+        contentType: false,
+        processData: false,
+        headers: {
+            'X-CSRFToken': getCSRFToken()
+        },
+        success: function(data) {
+            if (data.success) {
+                $('#pageModal').modal('hide');
+                alertMessage(data.message, 'alert alert-success');
+                listPages()
+
+            } else {
+                alertMessage(JSON.stringify(data.errors), 'alert alert-error');
+            }
+                
+        },
+        error: function(xhr, status, error) {
+            console.error('Error:', error);
+            let errorMessage = 'An unexpected error occurred.';
+            if (xhr.responseJSON && xhr.responseJSON.errors) {
+                errorMessage = 'Error: ' + JSON.stringify(xhr.responseJSON.errors);
+            }
+            alertMessage(errorMessage, 'alert alert-error');
+        }
+    });
+});
+
+// Function to refresh the page data
+function refreshPageData(pageId) {
+    $.ajax({
+        url: '/get-page-data/',
+        method: 'GET',
+        data: { id: pageId },
+        success: function(data) {
+            if (data.placeholders_html) {
+                const editPageUrl = `/update-placeholders/${pageId}/`;
+
+                // Dynamically inject CSRF token into the form
+                const csrfToken = $('input[name="csrfmiddlewaretoken"]').val();
+
+                $('#page-content').html(`
+                    <h1>${data.template_name}</h1>
+                    <form id="edit-page-form" action="${editPageUrl}" method="post" enctype="multipart/form-data">
+                        <input type="hidden" name="csrfmiddlewaretoken" value="${csrfToken}">
+                        <input type="hidden" name="page_id" value="${pageId}"> <!-- Include page ID as hidden input -->
+                        <div class="form-check mb-3">
+                            <input class="form-check-input" type="checkbox" id="showInNavbar" name="show_in_navbar" ${data.show_in_navbar ? 'checked' : ''}>
+                            <label class="form-check-label" for="showInNavbar">Show in Navbar</label>
+                        </div>
+                        ${data.placeholders_html}
+                        <button type="submit" class="btn btn-primary">Save Changes</button>
+                    </form>
+                `);
+            } else {
+                alertMessage('No placeholders data found', 'alert alert-error');
+            }
+        },
+        error: function(xhr, status, error) {
+            alertMessage(error, 'alert alert-error');
+        }
+    });
+}
+
+
+$('#page-list').on('click', 'button', function() {
+    const pageId = $(this).data('page-id');
+    refreshPageData(pageId);
+});
+
+// Handle form submission
+$('#page-content').on('submit', '#edit-page-form', function(e) {
+    e.preventDefault();
+
+    var formData = new FormData(this);
+    var form = $(this);
+    var pageId = form.find('input[name="page_id"]').val(); // Assuming you have a hidden input for page ID
+
+    $.ajax({
+        url: form.attr('action'),  // Use the action URL from the form
+        method: 'POST',
+        data: formData,
+        processData: false,
+        contentType: false,
+        success: function(response) {
+            if (response.success) {
+                alertMessage('Page updated successfully!', 'alert alert-success');
+                
+                // Refresh the page data
+                refreshPageData(pageId);
+            } else {
+                alertMessage('Failed to update page.', 'alert alert-error');
+            }
+        },
+        error: function(xhr, status, error) {
+            alertMessage('Error saving page data: ' + error, 'alert alert-error');
+        }
+    });
+});
+
+
+$('#edit-page-form').on('submit', function(event) {
+    event.preventDefault(); // Prevent default form submission
+
+    var formData = new FormData(this);
+
+    // Add the checkbox value explicitly
+    formData.append('show_in_navbar', $('#showInNavbar').is(':checked') ? 'on' : 'off');
+
+    $.ajax({
+        url: $(this).attr('action'),
+        type: 'POST',
+        data: formData,
+        contentType: false,
+        processData: false,
+        success: function(response) {
+            if (response.success) {
+                alertMessage('Placeholders updated successfully!', 'alert alert-success');
+            } else {
+                alertMessage('Failed to update placeholders.', 'alert alert-error');
+            }
+        },
+        error: function(xhr, status, error) {
+            alertMessage('Error saving page data: ' + error, 'alert alert-error');
+        }
+    });
+});
+
+
+    // Fetch and display list of pages
+function listPages() {
+        $.ajax({
+        url: '/list-pages/',
+        method: 'GET',
+        success: function(data) {
+            const pageList = $('#page-list');
+            pageList.empty(); // Clear existing pages
+            $.each(data.pages, function(index, page) {
+                pageList.append('<button class="btn btn-secondary btn-block mb-2" data-page-id="' + page.id + '">' + page.title + '</button>');
+            });
+        },
+        error: function(xhr, status, error) {
+            console.error('Error fetching pages:', error);
+        }
+    });
+}
+function showTemplates() {
+    $.ajax({
+        url: '/list-templates/',
+        method: 'GET',
+        success: function(data) {
+            let templatesHtml = `
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h3 class="mb-0">Templates</h3>
+                    <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#addPage">
+                        +
+                    </button>
+                </div>
+            `;
+
+            $.each(data.templates, function(index, template) {
+                templatesHtml += `
+                    <button class="btn btn-info mb-2 edit-template-btn" data-template-name="${template}">
+                        ${template}
+                    </button>
+                `;
+            });
+
+            $('#page-content').html(templatesHtml);
+        },
+        error: function(xhr, status, error) {
+            alert('Error fetching templates: ' + error);
+        }
+    })
+;}
+
+// Show the templates list
+$('#showTemplates').on('click', function() {
+    showTemplates()
+});
+function showWebSitData() {
+    $.ajax({
+        url: '/list-templates/',
+        method: 'GET',
+        success: function(data) {
+            let templatesHtml = `
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h3 class="mb-0">Templates</h3>
+                    <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#addPage">
+                        +
+                    </button>
+                </div>
+            `;
+
+            $.each(data.templates, function(index, template) {
+                templatesHtml += `
+                    <button class="btn btn-info mb-2 edit-template-btn" data-template-name="${template}">
+                        ${template}
+                    </button>
+                `;
+            });
+
+            $('#page-content').html(templatesHtml);
+        },
+        error: function(xhr, status, error) {
+            alert('Error fetching templates: ' + error);
+        }
+    })
+;}
+// Show the templates list
+$('#showWebSitData').on('click', function() {
+    showWebSitData()
+});
+
+// Handle template button clicks to load content for editing
+$('#page-content').on('click', '.edit-template-btn', function() {
+    var templateName = $(this).data('template-name');
+    
+    if (!templateName) {
+        console.error('Template name is missing');
+        return;
+    }
+
+    $.ajax({
+        url: '/get-template-content/',
+        method: 'GET',
+        data: { template_name: templateName },
+        success: function(data) {
+            $('#template-nametext').text(data.template_name);
+            $('#template-name').val(data.template_name);  // Ensure these IDs are correct
+            $('#template-content').val(data.template_content);
+            $('#templateModal').modal('show');
+        },
+        error: function(xhr, status, error) {
+            console.error('Error fetching template content:', error);
+        }
+    });
+});
+
+
+
+
+$('#add-template-form').on('submit', function(event) {
+    event.preventDefault();
+    const formData = new FormData(this);
+
+    $.ajax({
+        url: '/add-template/',  // Change this URL to match your view
+        method: 'POST',
+        data: formData,
+        contentType: false,
+        processData: false,
+        headers: {
+            'X-CSRFToken': getCSRFToken()
+        },
+        success: function(data) {
+            if (data.success) {
+                $('#addPage').modal('hide');
+                alertMessage('Template added successfully!', 'alert alert-success');
+                $('#new-template-name').val('');
+                $('#new-template-content').val('');
+                showTemplates()
+            } else {
+                alertMessage('Error adding template.', 'alert alert-error');
+            }
+        },
+        error: function(xhr, status, error) {
+            console.error('Error:', error);
+            alertMessage('Error adding template.', 'alert alert-error');
+        }
+    });
+});
+
+$('#template-form').on('submit', function(event) {
+    event.preventDefault();
+    const formData = new FormData(this);
+    const templateName = $('#template-name').val(); // Ensure this matches the ID in your HTML
+    
+    if (!templateName) {
+        alertMessage('Template name is missing.', 'alert alert-error');
+        return;
+    }
+
+    $.ajax({
+        url: `/edit-template/${templateName}/`,  // Ensure this URL is correctly formed
+        method: 'POST',
+        data: formData,
+        contentType: false,
+        processData: false,
+        headers: {
+            'X-CSRFToken': getCSRFToken()  // Ensure CSRF token is included
+        },
+        success: function(data) {
+            if (data.success) {
+                $('#templateModal').modal('hide');
+                alertMessage('Template saved successfully!', 'alert alert-success');
+                showTemplates()
+            } else {
+                alertMessage('Error saving template.', 'alert alert-error');
+            }
+        },
+        error: function(xhr, status, error) {
+            console.error('Error:', error);
+            alertMessage('Error saving template.', 'alert alert-error');
+        }
+    });
+});
+</script>
+

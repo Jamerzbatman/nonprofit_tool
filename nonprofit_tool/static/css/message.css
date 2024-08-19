@@ -1,0 +1,38 @@
+.message-box {
+    padding: 15px;
+    margin-bottom: 10px;
+    border-radius: 5px;
+    color: #fff;
+    font-size: 16px;
+    width: 300px;
+}
+
+.messages {
+    position: fixed;
+    top: 10px;
+    right: 10px;
+    width: auto;
+    z-index: 1000;
+}
+
+.messages .alert {
+    padding: 10px;
+    border-radius: 5px;
+    color: #fff;
+}
+
+.messages .alert.success {
+    background-color: #28a745;
+}
+
+.messages .alert.error {
+    background-color: #dc3545;
+}
+
+.messages .alert.alert-success {
+    background-color: #28a745;
+}
+
+.messages .alert.alert-error {
+    background-color: #dc3545;
+}

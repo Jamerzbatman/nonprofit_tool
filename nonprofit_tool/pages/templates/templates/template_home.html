@@ -1,0 +1,81 @@
+{% extends 'base/basePages.html' %}
+{% block title %}
+{{ title_text }}
+{% endblock %}
+
+{% block content %}
+
+    <header>
+        <h1>{{ header_text }}</h1>
+    </header>
+
+    <section id="hero">
+        <div class="placeholder" id="hero-text">{{ hero_text }}</div>
+        <img src="{{ hero_image.url }}" alt="Hero Image" class="placeholder" id="hero-image">
+    </section>
+
+    <section id="benefits">
+        <h2>{{ benefits_section_title_text }}</h2>
+        <div class="benefit">
+            <img src="{{ benefit_1_icon.url }}" alt="Benefit 1 Icon" class="placeholder" id="benefit-1-icon">
+            <p class="placeholder" id="benefit-1-text">{{ benefit_1_text }}</p>
+        </div>
+        <div class="benefit">
+            <img src="{{ benefit_2_icon.url }}" alt="Benefit 2 Icon" class="placeholder" id="benefit-2-icon">
+            <p class="placeholder" id="benefit-2-text">{{ benefit_2_text }}</p>
+        </div>
+        <div class="benefit">
+            <img src="{{ benefit_3_icon.url }}" alt="Benefit 3 Icon" class="placeholder" id="benefit-3-icon">
+            <p class="placeholder" id="benefit-3-text">{{ benefit_3_text }}</p>
+        </div>
+    </section>
+
+    <section id="features">
+        <h2>{{ features_section_title_text }}</h2>
+        <div class="feature">
+            <img src="{{ feature_1_icon.url }}" alt="Feature 1 Icon" class="placeholder" id="feature-1-icon">
+            <p class="placeholder" id="feature-1-text">{{ feature_1_text }}</p>
+        </div>
+        <div class="feature">
+            <img src="{{ feature_2_icon.url }}" alt="Feature 2 Icon" class="placeholder" id="feature-2-icon">
+            <p class="placeholder" id="feature-2-text">{{ feature_2_text }}</p>
+        </div>
+        <div class="feature">
+            <img src="{{ feature_3_icon.url }}" alt="Feature 3 Icon" class="placeholder" id="feature-3-icon">
+            <p class="placeholder" id="feature-3-text">{{ feature_3_text }}</p>
+        </div>
+        <div class="feature">
+            <img src="{{ feature_4_icon.url }}" alt="Feature 4 Icon" class="placeholder" id="feature-4-icon">
+            <p class="placeholder" id="feature-4-text">{{ feature_4_text }}</p>
+        </div>
+        <div class="feature">
+            <img src="{{ feature_5_icon.url }}" alt="Feature 5 Icon" class="placeholder" id="feature-5-icon">
+            <p class="placeholder" id="feature-5-text">{{ feature_5_text }}</p>
+        </div>
+        <div class="feature">
+            <img src="{{ feature_6_icon.url }}" alt="Feature 6 Icon" class="placeholder" id="feature-6-icon">
+            <p class="placeholder" id="feature-6-text">{{ feature_6_text }}</p>
+        </div>
+    </section>
+
+    <section id="how-it-works">
+        <h2>{{ how_it_works_title_text }}</h2>
+        <div class="how-it-works-step">
+            <img src="{{ step_1_icon.url }}" alt="Step 1 Icon" class="placeholder" id="step-1-icon">
+            <p class="placeholder" id="step-1-text">{{ step_1_text }}</p>
+        </div>
+        <div class="how-it-works-step">
+            <img src="{{ step_2_icon.url }}" alt="Step 2 Icon" class="placeholder" id="step-2-icon">
+            <p class="placeholder" id="step-2-text">{{ step_2_text }}</p>
+        </div>
+        <div class="how-it-works-step">
+            <img src="{{ step_3_icon.url }}" alt="Step 3 Icon" class="placeholder" id="step-3-icon">
+            <p class="placeholder" id="step-3-text">{{ step_3_text }}</p>
+        </div>
+    </section>
+
+    <footer>
+        <p>{{ footer_text }}</p>
+    </footer>
+
+{% endblock %}

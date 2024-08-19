@@ -1,0 +1,85 @@
+{% extends 'base/basePages.html' %}
+
+{% load custom_filters %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">Register</h3>
+                </div>
+                <div class="card-body">
+                    <form id="registerForm" method="post">
+                        {% csrf_token %}
+                        <div class="mb-3">
+                            <label for="{{ form.username.id_for_label }}" class="form-label">Username</label>
+                            {{ form.username|add_class:"form-control" }}
+                        </div>
+                        <div class="mb-3">
+                            <label for="{{ form.password1.id_for_label }}" class="form-label">Password</label>
+                            {{ form.password1|add_class:"form-control" }}
+                        </div>
+                        <div class="mb-3">
+                            <label for="{{ form.password2.id_for_label }}" class="form-label">Confirm Password</label>
+                            {{ form.password2|add_class:"form-control" }}
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100">Register</button>
+                        <div class="mt-3 text-center">
+                            <a href="{% url 'login' %}" class="btn btn-link text-decoration-none">Have an account? Login here</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block custom_script %}
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const form = document.getElementById('registerForm');
+
+        form.addEventListener('submit', function(event) {
+            event.preventDefault(); // Prevent the default form submission
+
+            const formData = new FormData(form);
+
+            fetch("{% url 'register' %}", {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    Message(data.message, 'alert alert-success');
+                    setTimeout(function() {
+                        window.location.href = '{% url "login" %}';
+                    }, 1500);
+                } else {
+                    if (data.errors) {
+                        Object.values(data.errors).forEach(function(error) {
+                            error.forEach(function(message) {
+                                Message(message.message, 'alert alert-error');
+                            });
+                        });
+                    } else {
+                        Message('An unexpected error occurred.', 'alert alert-error');
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                Message('An error occurred while processing your request.', 'alert alert-error');
+            });
+        });
+    });
+    
+    </script>
+{% endblock %}
