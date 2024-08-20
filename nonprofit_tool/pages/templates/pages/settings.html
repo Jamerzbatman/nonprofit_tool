@@ -3,11 +3,11 @@
 <div class="row">
     <!-- Sidebar for pages -->
     <div class="col-md-3">
-        <button  class="btn btn-secondary btn-block mb-2" data-bs-toggle="modal" data-bs-target="#addPage">Add Page</button>
         <div id="page-list">
             <!-- Page buttons will be populated here -->
         </div>
         <button id="showTemplates" class="btn btn-secondary btn-block mb-2">View Templates</button>
+        <button  class="btn btn-secondary btn-block mb-2" data-bs-toggle="modal" data-bs-target="#addPage">Add Page</button>
         <button id="showWebSitData" class="btn btn-secondary btn-block mb-2">View WebSite Details</button>
     </div>
     <!-- Main content area -->
@@ -47,11 +47,11 @@
     </div>
 </div>
 <!-- Modal for adding a new template -->
-<div class="modal fade" id="addPage" tabindex="-1" aria-labelledby="addPageLabel" aria-hidden="true">
+<div class="modal fade" id="addTemplates" tabindex="-1" aria-labelledby="addTemplatesLabel" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title" id="addPageLabel">Add New Template</h5>
+                <h5 class="modal-title" id="addTemplatesLabel">Add New Template</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
@@ -65,10 +65,6 @@
                         <label for="new-template-content" class="form-label">Template HTML Content:</label>
                         <textarea id="new-template-content" name="template_content" class="form-control" rows="8" required></textarea>
                     </div>
-                    <div class="mb-3">
-                        <label for="show-in-navbar" class="form-label">Show in Navbar:</label>
-                        <input type="checkbox" id="show-in-navbar" name="show_in_navbar">
-                    </div>
                     <button type="submit" class="btn btn-primary">Save Template</button>
                 </form>
             </div>
@@ -76,11 +72,50 @@
     </div>
 </div>
 
-
+<!-- Modal for adding a new Page -->
+<div class="modal fade" id="addPage" tabindex="-1" aria-labelledby="addPageLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="addPageLabel">Add New Template</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="page-form" method="post" enctype="multipart/form-data">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label for="title" class="form-label">Title</label>
+                        <input type="text" class="form-control" id="title" name="title" required>
+                      </div>
+                      <div class="mb-3">
+                        <label for="slug" class="form-label">Slug</label>
+                        <input type="text" class="form-control" id="slug" name="slug" required>
+                      </div>
+                      <div class="mb-3">
+                        <label for="template" class="form-label">Template Name</label>
+                        <select class="form-select" id="template" name="template_name" required>
+                          <!-- Options will be populated by AJAX -->
+                        </select>
+                      </div>
+                      <div class="mb-3 form-check">
+                        <input type="checkbox" class="form-check-input" id="showInNavbar" name="show_in_navbar">
+                        <label class="form-check-label" for="showInNavbar">Show in Navbar</label>
+                      </div>
+                      <button type="submit" class="btn btn-primary">Save</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
 <script>
 
 $('#settings-pages-tab').on('click', function() {
     listPages();
+});
+$(document).ready(function() {
+    $('#addPage').on('show.bs.modal', function () {
+            listTemplates();
+        });
 });
 // Fetch and populate template options
 function listTemplates() {
@@ -154,7 +189,7 @@ $('#page-form').on('submit', function(event) {
         },
         success: function(data) {
             if (data.success) {
-                $('#pageModal').modal('hide');
+                $('#addPage').modal('hide');
                 alertMessage(data.message, 'alert alert-success');
                 listPages()
 
@@ -300,7 +335,7 @@ function showTemplates() {
             let templatesHtml = `
                 <div class="d-flex justify-content-between align-items-center mb-3">
                     <h3 class="mb-0">Templates</h3>
-                    <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#addPage">
+                    <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#addTemplates">
                         +
                     </button>
                 </div>
