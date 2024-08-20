@@ -1,0 +1,75 @@
+<button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addAppModal">
+    Add App
+</button>
+<!-- Add App Modal -->
+<div class="modal fade" id="addAppModal" tabindex="-1" aria-labelledby="addAppModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="addAppModalLabel">Add New App</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <!-- Error container -->
+                <div id="formErrors"></div>
+                
+                <form id="addAppForm">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label for="appName" class="form-label">App Name</label>
+                        <input type="text" class="form-control" id="appName" name="name" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="appDescription" class="form-label">App Description</label>
+                        <textarea class="form-control" id="appDescription" name="description" rows="3" required></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Add App</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+document.getElementById('addAppForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const form = e.target;
+    const formData = new FormData(form);
+    
+    fetch("{% url 'create_app' %}", {
+        method: "POST",
+        headers: {
+            'X-CSRFToken': formData.get('csrfmiddlewaretoken'),
+        },
+        body: formData,
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Close the modal
+            $('#addAppModal').modal('hide');
+                alertMessage("App Created", 'alert alert-success');
+        } else {
+            // Display form errors
+            const errorContainer = document.getElementById('formErrors');
+            errorContainer.innerHTML = ''; // Clear any previous errors
+            
+            if (data.errors) {
+                for (const [field, errors] of Object.entries(data.errors)) {
+                    const errorElement = document.createElement('div');
+                    errorElement.className = 'alert alert-danger';
+                    errorElement.textContent = `${field}: ${errors.join(', ')}`;
+                    errorContainer.appendChild(errorElement);
+                }
+            } else if (data.error) {
+                const errorElement = document.createElement('div');
+                errorElement.className = 'alert alert-danger';
+                errorElement.textContent = data.error;
+                errorContainer.appendChild(errorElement);
+            }
+        }
+    })
+    .catch(error => console.error('Error:', error));
+});
+</script>
+    

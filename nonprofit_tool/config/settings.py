@@ -28,6 +28,7 @@ INSTALLED_APPS = [
     'bootstrap4',
     'organization',
     'questionnaires',
+    'app_management',
     'administration',
     'django.contrib.admin',
     'django.contrib.auth',

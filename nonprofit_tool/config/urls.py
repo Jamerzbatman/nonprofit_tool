@@ -6,6 +6,7 @@ from django.contrib import admin
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+    path('apps/', include('app_management.urls')),
     path('campaigns/', include('campaigns.urls')),
     path('dashboard/', include('dashboard.urls')),
     path('organization/', include('organization.urls')),
