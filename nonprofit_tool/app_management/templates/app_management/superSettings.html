@@ -27,11 +27,49 @@
                     </div>
                     <button type="submit" class="btn btn-primary">Add App</button>
                 </form>
+                <div id="paymentList" class="mt-3">
+                    <!-- Payment items will be dynamically added here -->
+                </div>
             </div>
         </div>
     </div>
 </div>
+<!-- Payment Modal -->
+<div class="modal fade" id="paymentModal" tabindex="-1" aria-labelledby="paymentModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="paymentModalLabel">Add Payment</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <!-- Form for adding payments -->
+                <form id="paymentForm">
+                    <div class="mb-3">
+                        <label for="paymentType" class="form-label">Payment Type</label>
+                        <select class="form-select" id="paymentType" name="payment_type" required>
+                            <option value="" disabled selected>Select type</option>
+                            <option value="monthly">Monthly</option>
+                            <option value="yearly">Yearly</option>
+                            <option value="free">Free</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="paymentAmount" class="form-label">Amount</label>
+                        <input type="number" class="form-control" id="paymentAmount" name="amount" step="0.01" required>
+                    </div>
+                    <input type="hidden" id="appId-${app.id}" name="app_id" value="${app.id}">
+                    <button type="submit" class="btn btn-primary">Add Payment</button>
+                </form>
 
+                <!-- Display added payments -->
+                <div id="paymentList" class="mt-3">
+                    <!-- Payment items will be dynamically added here -->
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 <!-- App List Container -->
 <div id="appList" class="mt-3">
     <!-- Apps will be listed here -->
@@ -81,7 +119,7 @@ document.getElementById('addAppForm').addEventListener('submit', function(e) {
 
 // Function to load the list of apps
 function loadAppList() {
-    fetch("{% url 'list_apps' %}") // Ensure this URL matches the URL pattern for your list apps view
+    fetch("{% url 'list_apps' %}")
     .then(response => response.json())
     .then(data => {
         const appList = document.getElementById('appList');
@@ -92,15 +130,193 @@ function loadAppList() {
             appBox.className = 'card mb-2';
             appBox.innerHTML = `
                 <div class="card-body">
-                    <h5 class="card-title">${app.name}</h5>
+                    <h5 class="card-title">${formatAppName(app.name)}</h5>
+                    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-app-id="${app.id}" data-bs-target="#paymentModal-${app.id}">
+                        Payment
+                    </button>
                 </div>
             `;
             appList.appendChild(appBox);
+
+            const modal = document.createElement('div');
+            modal.className = 'modal fade';
+            modal.id = `paymentModal-${app.id}`;
+            modal.tabIndex = '-1';
+            modal.setAttribute('aria-labelledby', `paymentModalLabel-${app.id}`);
+            modal.setAttribute('aria-hidden', 'true');
+            modal.innerHTML = `
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="paymentModalLabel-${app.id}">Payment Details for ${formatAppName(app.name)}</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <form id="paymentForm-${app.id}">
+                            {% csrf_token %}
+                            <input type="hidden" id="appId-${app.id}" name="app_id" value="${app.id}">
+                            <div class="mb-3">
+                                <label for="paymentType-${app.id}" class="form-label">Payment Type</label>
+                                <select class="form-select" id="paymentType-${app.id}" name="payment_type" required>
+                                    <option value="free">Free</option>
+                                    <option value="monthly">Monthly</option>
+                                    <option value="yearly">Yearly</option>
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label for="paymentAmount-${app.id}" class="form-label">Amount</label>
+                                <input type="number" class="form-control" id="paymentAmount-${app.id}" name="amount" step="0.01" min="0" required>
+                            </div>
+                            <button type="submit" class="btn btn-primary">Save Payment Details</button>
+                        </form>
+                        <div id="paymentList-${app.id}" class="mt-3">
+                            <!-- Payment items will be dynamically added here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+            `;
+            appList.appendChild(modal);
+
+            // Attach event listener to the payment form
+            document.getElementById(`paymentForm-${app.id}`).addEventListener('submit', function(e) {
+                e.preventDefault();
+
+                const formData = new FormData(e.target);
+
+                fetch(`/apps/${app.id}/payment/`, {
+                    method: "POST",
+                    headers: {
+                        'X-CSRFToken': formData.get('csrfmiddlewaretoken'),
+                    },
+                    body: formData,
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alertMessage("Payment Details Saved", 'alert alert-success');
+                        loadPayments(app.id);
+                    } else {
+                        alertMessage("Error: " + (data.error || "Failed to save payment details"), 'alert alert-danger');
+                    }
+                })
+                .catch(error => console.error('Error:', error));
+            });
         });
     })
     .catch(error => console.error('Error loading app list:', error));
 }
 
-// Load the app list on page load
-document.addEventListener('DOMContentLoaded', loadAppList);
+function formatAppName(name) {
+    return name.replace(/_/g, ' ').replace(/\b\w/g, char => char.toUpperCase());
+}
+// Handle payment form submission
+document.getElementById('paymentForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+
+    const form = e.target;
+    const formData = new FormData(form);
+
+    const paymentType = formData.get('payment_type');
+    const amount = formData.get('amount');
+
+    if (paymentType && amount) {
+        const paymentItem = document.createElement('div');
+        paymentItem.className = 'payment-item mb-2 d-flex justify-content-between align-items-center';
+        paymentItem.innerHTML = `
+            <div>
+                ${paymentType} - $${amount}
+            </div>
+            <div>
+                <button type="button" class="btn btn-warning btn-sm me-2 edit-payment">Edit</button>
+                <button type="button" class="btn btn-danger btn-sm delete-payment">Delete</button>
+            </div>
+        `;
+
+        const paymentList = document.getElementById('paymentList');
+        paymentList.appendChild(paymentItem);
+
+        // Clear form inputs
+        form.reset();
+
+        // Add event listeners for edit and delete buttons
+        paymentItem.querySelector('.edit-payment').addEventListener('click', function() {
+            const newType = prompt('Enter new payment type:', paymentType);
+            const newAmount = prompt('Enter new amount:', amount);
+            if (newType && newAmount) {
+                paymentItem.querySelector('div').innerHTML = `${newType} - $${newAmount}`;
+            }
+        });
+
+        paymentItem.querySelector('.delete-payment').addEventListener('click', function() {
+            paymentItem.remove();
+        });
+    }
+});
+
+// Function to load payments into the modal
+function loadPayments(appId) {
+    const paymentList = document.getElementById(`paymentList-${appId}`);
+    if (!paymentList) {
+        console.error(`No payment list found for app ID ${appId}`);
+        return;
+    }
+
+    fetch(`/apps/fetch/${appId}/payments/`)
+    .then(response => response.json())
+    .then(data => {
+        paymentList.innerHTML = ''; // Clear existing payments
+
+        data.payments.forEach(payment => {
+            const paymentItem = document.createElement('div');
+            paymentItem.className = 'payment-item mb-2 d-flex justify-content-between align-items-center';
+            paymentItem.innerHTML = `
+                <div>
+                    ${payment.payment_type} - $${payment.amount}
+                </div>
+                <div>
+                    <button type="button" class="btn btn-warning btn-sm me-2 edit-payment" data-payment-id="${payment.id}" data-app-id="${appId}">Edit</button>
+                    <button type="button" class="btn btn-danger btn-sm delete-payment" data-payment-id="${payment.id}" data-app-id="${appId}">Delete</button>
+                </div>
+            `;
+            paymentList.appendChild(paymentItem);
+        });
+
+        // Attach event listeners for edit and delete buttons
+        paymentList.querySelectorAll('.edit-payment').forEach(button => {
+            button.addEventListener('click', function() {
+                const paymentId = this.dataset.paymentId;
+                const appId = this.dataset.appId;
+                // Implement edit functionality
+            });
+        });
+
+        paymentList.querySelectorAll('.delete-payment').forEach(button => {
+            button.addEventListener('click', function() {
+                const paymentId = this.dataset.paymentId;
+                const appId = this.dataset.appId;
+                // Implement delete functionality
+            });
+        });
+    })
+    .catch(error => console.error('Error loading payments:', error));
+}
+
+
+document.addEventListener('DOMContentLoaded', function() {
+    loadAppList();
+    const appList = document.getElementById('appList');
+
+    appList.addEventListener('click', function(event) {
+        if (event.target.matches('[data-bs-toggle="modal"]')) {
+            const appId = event.target.getAttribute('data-app-id');
+
+            // Set hidden input field for app ID
+            document.getElementById(`appId-${appId}`).value = appId;
+
+            // Load existing payments for the selected app
+            loadPayments(appId);
+        }
+    });
+});
 </script>

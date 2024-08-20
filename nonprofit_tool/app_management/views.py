@@ -1,5 +1,5 @@
 from django.core.management import call_command
-from .models import App
+from .models import App, Payment
 from .forms import AppForm
 from django.http import JsonResponse
 
@@ -51,3 +51,30 @@ def create_app(request):
             return JsonResponse({'success': False, 'errors': form.errors})
     else:
         return JsonResponse({'success': False, 'error': 'Invalid request method'}, status=400)
+    
+
+def save_payment_details(request, app_id):
+    if request.method == 'POST':
+        app = App.objects.get(id=app_id)
+        payment_type = request.POST.get('payment_type')
+        amount = request.POST.get('amount')
+
+        if not payment_type or not amount:
+            return JsonResponse({'success': False, 'error': 'Missing payment type or amount'}, status=400)
+
+        try:
+            # Create a new payment entry
+            Payment.objects.create(
+                app=app,
+                payment_type=payment_type,
+                amount=amount
+            )
+            return JsonResponse({'success': True})
+        except Exception as e:
+            return JsonResponse({'success': False, 'error': str(e)}, status=500)
+    
+    return JsonResponse({'success': False, 'error': 'Invalid request method'}, status=400)
+
+def fetch_payments(request, app_id):
+    payments = Payment.objects.filter(app_id=app_id).values('id', 'payment_type', 'amount')
+    return JsonResponse({'payments': list(payments)})

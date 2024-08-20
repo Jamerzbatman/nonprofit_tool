@@ -1,6 +1,7 @@
 # myapp/admin.py
 from django.contrib import admin
-from .models import App  # Import your models here
+from .models import App, Payment
 
-# Register your models here
 admin.site.register(App)
+admin.site.register(Payment)
+
