@@ -1,6 +1,8 @@
+<!-- Add App Button -->
 <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addAppModal">
     Add App
 </button>
+
 <!-- Add App Modal -->
 <div class="modal fade" id="addAppModal" tabindex="-1" aria-labelledby="addAppModalLabel" aria-hidden="true">
     <div class="modal-dialog">
@@ -29,6 +31,12 @@
         </div>
     </div>
 </div>
+
+<!-- App List Container -->
+<div id="appList" class="mt-3">
+    <!-- Apps will be listed here -->
+</div>
+
 <script>
 document.getElementById('addAppForm').addEventListener('submit', function(e) {
     e.preventDefault();
@@ -46,11 +54,10 @@ document.getElementById('addAppForm').addEventListener('submit', function(e) {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            // Close the modal
             $('#addAppModal').modal('hide');
-                alertMessage("App Created", 'alert alert-success');
+            alertMessage("App Created", 'alert alert-success');
+            loadAppList(); // Reload the app list
         } else {
-            // Display form errors
             const errorContainer = document.getElementById('formErrors');
             errorContainer.innerHTML = ''; // Clear any previous errors
             
@@ -71,5 +78,29 @@ document.getElementById('addAppForm').addEventListener('submit', function(e) {
     })
     .catch(error => console.error('Error:', error));
 });
+
+// Function to load the list of apps
+function loadAppList() {
+    fetch("{% url 'list_apps' %}") // Ensure this URL matches the URL pattern for your list apps view
+    .then(response => response.json())
+    .then(data => {
+        const appList = document.getElementById('appList');
+        appList.innerHTML = ''; // Clear existing list
+
+        data.apps.forEach(app => {
+            const appBox = document.createElement('div');
+            appBox.className = 'card mb-2';
+            appBox.innerHTML = `
+                <div class="card-body">
+                    <h5 class="card-title">${app.name}</h5>
+                </div>
+            `;
+            appList.appendChild(appBox);
+        });
+    })
+    .catch(error => console.error('Error loading app list:', error));
+}
+
+// Load the app list on page load
+document.addEventListener('DOMContentLoaded', loadAppList);
 </script>
-    

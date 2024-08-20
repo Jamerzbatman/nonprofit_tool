@@ -5,8 +5,24 @@ from django.http import JsonResponse
 
 
 
-def app_list(request):
-    apps = App.objects.all()
+def format_app_name(app_name):
+    # Replace underscores with spaces and capitalize each word
+    return app_name.replace('_', ' ').title()
+
+def list_apps(request):
+    apps = App.objects.all().values('id', 'name')
+    
+    # Format app names
+    formatted_apps = [
+        {
+            'id': app['id'],
+            'name': format_app_name(app['name'])
+        }
+        for app in apps
+    ]
+    
+    return JsonResponse({'apps': formatted_apps})
+
 
 def create_app(request):
     if request.method == 'POST':
@@ -14,6 +30,9 @@ def create_app(request):
         if form.is_valid():
             app_name = form.cleaned_data['name']
             app_description = form.cleaned_data['description']
+
+            # Convert app_name to lowercase and replace spaces with underscores
+            app_name = app_name.lower().replace(' ', '_')
 
             # Save the app details to the database
             new_app = App(name=app_name, description=app_description)
@@ -24,7 +43,7 @@ def create_app(request):
                 call_command('create_custom_app', app_name, app_description)
                 return JsonResponse({'success': True, 'app_id': new_app.id})
             except Exception as e:
-                # Optionally, you can remove the app record from the database if command fails
+                # Optionally, you can remove the app record from the database if the command fails
                 new_app.delete()
                 return JsonResponse({'success': False, 'error': str(e)})
 
