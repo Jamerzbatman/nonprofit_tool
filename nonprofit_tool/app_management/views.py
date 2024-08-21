@@ -58,22 +58,47 @@ def save_payment_details(request, app_id):
         app = App.objects.get(id=app_id)
         payment_type = request.POST.get('payment_type')
         amount = request.POST.get('amount')
-
-        if not payment_type or not amount:
-            return JsonResponse({'success': False, 'error': 'Missing payment type or amount'}, status=400)
-
         try:
-            # Create a new payment entry
-            Payment.objects.create(
-                app=app,
-                payment_type=payment_type,
-                amount=amount
-            )
+            existing_payment = Payment.objects.filter(app=app, payment_type=payment_type).first()
+            if payment_type == 'free':
+                Payment.objects.filter(app=app).delete()
+                Payment.objects.create(app=app, payment_type=payment_type, amount=00.00)
+            elif not payment_type or not amount:
+                return JsonResponse({'success': False, 'error': 'Missing payment type or amount'}, status=400)
+            elif existing_payment:
+                 existing_payment.amount = amount
+                 existing_payment.save()
+
+            elif payment_type == 'once':  
+                Payment.objects.filter(app=app).delete()
+                Payment.objects.create(app=app, payment_type=payment_type, amount=amount)
+            else:
+                free_payment = Payment.objects.filter(app=app, payment_type='free')
+                if free_payment.exists():
+                    free_payment.delete()
+                once_payment = Payment.objects.filter(app=app, payment_type='once')
+                if once_payment.exists():
+                    once_payment.delete()
+            
+
+                Payment.objects.create(app=app, payment_type=payment_type, amount=amount)
+
             return JsonResponse({'success': True})
         except Exception as e:
             return JsonResponse({'success': False, 'error': str(e)}, status=500)
     
     return JsonResponse({'success': False, 'error': 'Invalid request method'}, status=400)
+
+def delete_payment(request, payment_id):
+    if request.method == 'POST':
+        try:
+            payment = Payment.objects.get(id=payment_id)
+            payment.delete()
+            return JsonResponse({'success': True})
+        except Payment.DoesNotExist:
+            return JsonResponse({'success': False, 'error': 'Payment not found'}, status=404)
+    return JsonResponse({'success': False, 'error': 'Invalid request method'}, status=400)
+    
 
 def fetch_payments(request, app_id):
     payments = Payment.objects.filter(app_id=app_id).values('id', 'payment_type', 'amount')

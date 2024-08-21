@@ -158,9 +158,10 @@ function loadAppList() {
                             <div class="mb-3">
                                 <label for="paymentType-${app.id}" class="form-label">Payment Type</label>
                                 <select class="form-select" id="paymentType-${app.id}" name="payment_type" required>
-                                    <option value="free">Free</option>
+                                    <option value="once">One Time</option>
                                     <option value="monthly">Monthly</option>
                                     <option value="yearly">Yearly</option>
+                                    <option value="free">Free</option>
                                 </select>
                             </div>
                             <div class="mb-3">
@@ -202,6 +203,26 @@ function loadAppList() {
                 })
                 .catch(error => console.error('Error:', error));
             });
+
+            // Attach event listener to the payment type select to disable amount input if 'Free' is selected
+            const paymentTypeSelect = document.getElementById(`paymentType-${app.id}`);
+            const paymentAmountInput = document.getElementById(`paymentAmount-${app.id}`);
+
+            paymentTypeSelect.addEventListener('change', function() {
+                if (paymentTypeSelect.value === 'free') {
+                    paymentAmountInput.value = '00.00'; // Set value to 00.00
+                    paymentAmountInput.style.color = 'black';
+                    paymentAmountInput.disabled = true;
+                } else {
+                    paymentAmountInput.value = '';
+                    paymentAmountInput.disabled = false;
+                }
+            });
+
+            // Initial check to disable amount input if 'Free' is selected by default
+            if (paymentTypeSelect.value === 'free') {
+                paymentAmountInput.disabled = true;
+            }
         });
     })
     .catch(error => console.error('Error loading app list:', error));
@@ -275,33 +296,38 @@ function loadPayments(appId) {
                     ${payment.payment_type} - $${payment.amount}
                 </div>
                 <div>
-                    <button type="button" class="btn btn-warning btn-sm me-2 edit-payment" data-payment-id="${payment.id}" data-app-id="${appId}">Edit</button>
                     <button type="button" class="btn btn-danger btn-sm delete-payment" data-payment-id="${payment.id}" data-app-id="${appId}">Delete</button>
                 </div>
             `;
             paymentList.appendChild(paymentItem);
         });
 
-        // Attach event listeners for edit and delete buttons
-        paymentList.querySelectorAll('.edit-payment').forEach(button => {
-            button.addEventListener('click', function() {
-                const paymentId = this.dataset.paymentId;
-                const appId = this.dataset.appId;
-                // Implement edit functionality
-            });
-        });
-
         paymentList.querySelectorAll('.delete-payment').forEach(button => {
             button.addEventListener('click', function() {
                 const paymentId = this.dataset.paymentId;
                 const appId = this.dataset.appId;
-                // Implement delete functionality
+
+                fetch(`/apps/delete-payment/${paymentId}/`, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': '{{ csrf_token }}', // Include the CSRF token
+                    },
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alertMessage("Payment Deleted", 'alert alert-success');
+                        loadPayments(appId); // Reload the payments list
+                    } else {
+                        alertMessage("Error: " + (data.error || "Failed to delete payment"), 'alert alert-danger');
+                    }
+                })
+                .catch(error => console.error('Error deleting payment:', error));
             });
         });
     })
     .catch(error => console.error('Error loading payments:', error));
 }
-
 
 document.addEventListener('DOMContentLoaded', function() {
     loadAppList();
