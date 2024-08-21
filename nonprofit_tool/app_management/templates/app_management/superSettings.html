@@ -1,3 +1,15 @@
+<style>
+/* Ensure the addClassModal is on top */
+#addClassModal {
+    z-index: 1050; /* Default Bootstrap z-index for modals */
+}
+
+/* Ensure the paymentModal is below addClassModal */
+#modelModal {
+    z-index: 1040; /* Less than addClassModal */
+}
+
+</style>
 <!-- Add App Button -->
 <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addAppModal">
     Add App
@@ -70,6 +82,54 @@
         </div>
     </div>
 </div>
+<!-- Add Class Name Modal -->
+<div class="modal fade" id="addClassModal" tabindex="-1" aria-labelledby="addClassModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="addClassModalLabel">Add New Class</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label for="className" class="form-label">Class Name</label>
+                    <input type="text" class="form-control" id="className">
+                </div>
+                <button type="button" class="btn btn-primary" onclick="showAddFieldsModal()">Next</button>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- Add Fields Modal -->
+<div class="modal fade" id="addFieldsModal" tabindex="-1" aria-labelledby="addFieldsModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="addFieldsModalLabel">Add Fields to Class</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <button type="button" class="btn btn-secondary" onclick="addFieldToClass('text')">Text Field</button>
+                    <button type="button" class="btn btn-secondary" onclick="addFieldToClass('textarea')">Text Area</button>
+                    <button type="button" class="btn btn-secondary" onclick="addFieldToClass('integer')">Integer Field</button>
+                    <button type="button" class="btn btn-secondary" onclick="addFieldToClass('decimal')">Decimal Field</button>
+                    <button type="button" class="btn btn-secondary" onclick="addFieldToClass('float')">Float Field</button>
+                    <button type="button" class="btn btn-secondary" onclick="addFieldToClass('date')">Date Field</button>
+                    <button type="button" class="btn btn-secondary" onclick="addFieldToClass('datetime')">DateTime Field</button>
+                    <button type="button" class="btn btn-secondary" onclick="addFieldToClass('boolean')">Boolean Field</button>
+                    <button type="button" class="btn btn-secondary" onclick="addFieldToClass('image')">Image Field</button>
+                    <button type="button" class="btn btn-secondary" onclick="addFieldToClass('file')">File Field</button>
+                </div>
+                <div class="mb-3">
+                    <textarea id="modelEditorDisplay" class="form-control" rows="10"></textarea>
+                </div>
+                <button type="button" class="btn btn-primary" onclick="saveClassToEditor()">Save Class</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- App List Container -->
 <div id="appList" class="mt-3">
     <!-- Apps will be listed here -->
@@ -118,6 +178,7 @@ document.getElementById('addAppForm').addEventListener('submit', function(e) {
 });
 
 // Function to load the list of apps
+// Function to load the list of apps
 function loadAppList() {
     fetch("{% url 'list_apps' %}")
     .then(response => response.json())
@@ -134,58 +195,91 @@ function loadAppList() {
                     <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-app-id="${app.id}" data-bs-target="#paymentModal-${app.id}">
                         Payment
                     </button>
+                    <button type="button" class="btn btn-secondary ms-2" data-bs-toggle="modal" data-app-id="${app.id}" data-bs-target="#modelModal-${app.id}">
+                        Manage Models
+                    </button>
                 </div>
             `;
             appList.appendChild(appBox);
 
-            const modal = document.createElement('div');
-            modal.className = 'modal fade';
-            modal.id = `paymentModal-${app.id}`;
-            modal.tabIndex = '-1';
-            modal.setAttribute('aria-labelledby', `paymentModalLabel-${app.id}`);
-            modal.setAttribute('aria-hidden', 'true');
-            modal.innerHTML = `
-            <div class="modal-dialog">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h5 class="modal-title" id="paymentModalLabel-${app.id}">Payment Details for ${formatAppName(app.name)}</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                    </div>
-                    <div class="modal-body">
-                        <form id="paymentForm-${app.id}">
-                            {% csrf_token %}
-                            <input type="hidden" id="appId-${app.id}" name="app_id" value="${app.id}">
-                            <div class="mb-3">
-                                <label for="paymentType-${app.id}" class="form-label">Payment Type</label>
-                                <select class="form-select" id="paymentType-${app.id}" name="payment_type" required>
-                                    <option value="once">One Time</option>
-                                    <option value="monthly">Monthly</option>
-                                    <option value="yearly">Yearly</option>
-                                    <option value="free">Free</option>
-                                </select>
+            // Payment Modal
+            const paymentModal = document.createElement('div');
+            paymentModal.className = 'modal fade';
+            paymentModal.id = `paymentModal-${app.id}`;
+            paymentModal.tabIndex = '-1';
+            paymentModal.setAttribute('aria-labelledby', `paymentModalLabel-${app.id}`);
+            paymentModal.setAttribute('aria-hidden', 'true');
+            paymentModal.innerHTML = `
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="paymentModalLabel-${app.id}">Payment Details for ${formatAppName(app.name)}</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            <form id="paymentForm-${app.id}">
+                                {% csrf_token %}
+                                <input type="hidden" id="appId-${app.id}" name="app_id" value="${app.id}">
+                                <div class="mb-3">
+                                    <label for="paymentType-${app.id}" class="form-label">Payment Type</label>
+                                    <select class="form-select" id="paymentType-${app.id}" name="payment_type" required>
+                                        <option value="once">One Time</option>
+                                        <option value="monthly">Monthly</option>
+                                        <option value="yearly">Yearly</option>
+                                        <option value="free">Free</option>
+                                    </select>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="paymentAmount-${app.id}" class="form-label">Amount</label>
+                                    <input type="number" class="form-control" id="paymentAmount-${app.id}" name="amount" step="0.01" min="0" required>
+                                </div>
+                                <button type="submit" class="btn btn-primary">Save Payment Details</button>
+                            </form>
+                            <div id="paymentList-${app.id}" class="mt-3">
+                                <!-- Payment items will be dynamically added here -->
                             </div>
-                            <div class="mb-3">
-                                <label for="paymentAmount-${app.id}" class="form-label">Amount</label>
-                                <input type="number" class="form-control" id="paymentAmount-${app.id}" name="amount" step="0.01" min="0" required>
-                            </div>
-                            <button type="submit" class="btn btn-primary">Save Payment Details</button>
-                        </form>
-                        <div id="paymentList-${app.id}" class="mt-3">
-                            <!-- Payment items will be dynamically added here -->
                         </div>
                     </div>
                 </div>
-            </div>
             `;
-            appList.appendChild(modal);
+            appList.appendChild(paymentModal);
 
-            // Attach event listener to the payment form
-            document.getElementById(`paymentForm-${app.id}`).addEventListener('submit', function(e) {
+            // Model Management Modal
+            const modelModal = document.createElement('div');
+            modelModal.className = 'modal fade';
+            modelModal.id = `modelModal-${app.id}`;
+            modelModal.tabIndex = '-1';
+            modelModal.setAttribute('aria-labelledby', `modelModalLabel-${app.id}`);
+            modelModal.setAttribute('aria-hidden', 'true');
+            modelModal.innerHTML = `
+                    <div class="modal-dialog">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title" id="modelModalLabel-${app.id}">Manage Models for ${formatAppName(app.name)}</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+                            <div class="modal-body">
+                                <button type="button" class="btn btn-secondary" onclick="showAddClassModal(${app.id})">Add New Class</button>
+                                <textarea id="modelEditor-${app.id}" class="form-control mt-3" rows="10"></textarea>
+                                <button type="button" class="btn btn-primary mt-3" onclick="saveModels(${app.id})">Save Models</button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            // Append the modal to the body (or a suitable container)
+            document.body.appendChild(modelModal);
+
+            // Optionally, you can show modals based on user interaction or other conditions
+        });
+
+        // Attach event listener to the payment form
+        document.querySelectorAll('[id^="paymentForm-"]').forEach(form => {
+            form.addEventListener('submit', function(e) {
                 e.preventDefault();
 
                 const formData = new FormData(e.target);
 
-                fetch(`/apps/${app.id}/payment/`, {
+                fetch(`/apps/${form.querySelector('input[name="app_id"]').value}/payment/`, {
                     method: "POST",
                     headers: {
                         'X-CSRFToken': formData.get('csrfmiddlewaretoken'),
@@ -196,20 +290,21 @@ function loadAppList() {
                 .then(data => {
                     if (data.success) {
                         alertMessage("Payment Details Saved", 'alert alert-success');
-                        loadPayments(app.id);
+                        loadPayments(form.querySelector('input[name="app_id"]').value);
                     } else {
                         alertMessage("Error: " + (data.error || "Failed to save payment details"), 'alert alert-danger');
                     }
                 })
                 .catch(error => console.error('Error:', error));
             });
+        });
 
-            // Attach event listener to the payment type select to disable amount input if 'Free' is selected
-            const paymentTypeSelect = document.getElementById(`paymentType-${app.id}`);
-            const paymentAmountInput = document.getElementById(`paymentAmount-${app.id}`);
+        // Attach event listener to the payment type select to disable amount input if 'Free' is selected
+        document.querySelectorAll('[id^="paymentType-"]').forEach(select => {
+            const paymentAmountInput = document.getElementById(`paymentAmount-${select.dataset.appId}`);
 
-            paymentTypeSelect.addEventListener('change', function() {
-                if (paymentTypeSelect.value === 'free') {
+            select.addEventListener('change', function() {
+                if (select.value === 'free') {
                     paymentAmountInput.value = '00.00'; // Set value to 00.00
                     paymentAmountInput.style.color = 'black';
                     paymentAmountInput.disabled = true;
@@ -220,13 +315,18 @@ function loadAppList() {
             });
 
             // Initial check to disable amount input if 'Free' is selected by default
-            if (paymentTypeSelect.value === 'free') {
+            if (select.value === 'free') {
                 paymentAmountInput.disabled = true;
             }
         });
+
+        // Load models for the current app
+        data.apps.forEach(app => loadModels(app.id));
     })
     .catch(error => console.error('Error loading app list:', error));
 }
+
+
 
 function formatAppName(name) {
     return name.replace(/_/g, ' ').replace(/\b\w/g, char => char.toUpperCase());
@@ -328,6 +428,213 @@ function loadPayments(appId) {
     })
     .catch(error => console.error('Error loading payments:', error));
 }
+
+function loadModels(appId) {
+
+    fetch(`/apps/fetch/${appId}/models/`)
+    .then(response => response.json())
+    .then(data => {
+        if (data.success === false) {
+            alertMessage('Error loading models: ' + data.error, 'alert alert-danger');
+            console.error('Error:', data.error);
+            return;
+        }
+
+        const modelEditor = document.getElementById(`modelEditor-${appId}`);
+        if (modelEditor) {
+            modelEditor.textContent = data.models_code; // Display the code in a preformatted text element
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alertMessage('Error loading models', 'alert alert-danger');
+    });
+}
+let currentAppId = null;
+let currentClassName = '';
+let fields = [];
+
+function showAddClassModal(appId) {
+    currentAppId = appId; // Set the current app ID
+    $('#modelModal-' + appId).modal('hide');
+    $('#addClassModal').modal('show');
+}
+function showAddFieldsModal() {
+    var className = document.getElementById('className').value.trim();  // Trim whitespace from the class name
+    if (className) {
+        currentClassName = className;  // Store the class name in the global variable
+        $('#addClassModal').modal('hide');
+        $('#addFieldsModal').modal('show');
+    } else {
+        alert('Please enter a class name.');
+    }
+}
+// Function to set the current appId when the modal is opened
+function setAppId(appId) {
+    currentAppId = appId;
+}
+
+function addFieldToClass(type) {
+    if (currentAppId === null) {
+        console.error("No app ID set.");
+        return;
+    }
+
+    const editor = document.getElementById('modelEditorDisplay');
+    let fieldCode = '';
+
+    switch (type) {
+        case 'text':
+            fieldCode = '\n    text_field = models.CharField(max_length=255)';
+            break;
+        case 'textarea':
+            fieldCode = '\n    textarea_field = models.TextField()';
+            break;
+        case 'integer':
+            fieldCode = '\n    integer_field = models.IntegerField()';
+            break;
+        case 'decimal':
+            fieldCode = '\n    decimal_field = models.DecimalField(max_digits=10, decimal_places=2)';
+            break;
+        case 'float':
+            fieldCode = '\n    float_field = models.FloatField()';
+            break;
+        case 'date':
+            fieldCode = '\n    date_field = models.DateField()';
+            break;
+        case 'datetime':
+            fieldCode = '\n    datetime_field = models.DateTimeField()';
+            break;
+        case 'boolean':
+            fieldCode = '\n    boolean_field = models.BooleanField(default=False)';
+            break;
+        case 'image':
+            fieldCode = '\n    image_field = models.ImageField(upload_to="images/")';
+            break;
+        case 'file':
+            fieldCode = '\n    file_field = models.FileField(upload_to="files/")';
+            break;
+        // Add more cases for additional field types
+    }
+    editor.value += fieldCode;
+}
+function createAndShowModal(appId) {
+    // Modal HTML
+    const modalHTML = `
+        <div class="modal fade" id="modelModal-${appId}" tabindex="-1" aria-labelledby="modelModalLabel-${appId}" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="modelModalLabel-${appId}">Manage Models for App ${appId}</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <button type="button" class="btn btn-secondary" onclick="showAddClassModal(${appId})">Add New Class</button>
+                        <textarea id="modelEditor-${appId}" class="form-control mt-3" rows="10"></textarea>
+                        <button type="button" class="btn btn-primary mt-3" onclick="saveModels(${appId})">Save Models</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // Append to body
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+
+    // Initialize and show modal
+    const modalElement = document.getElementById(`modelModal-${appId}`);
+    const modal = new bootstrap.Modal(modalElement);
+    modal.show();
+}
+
+function saveClassToEditor() {
+    if (currentAppId === null) {
+        console.error("No app ID set.");
+        return;
+    }
+
+    // Ensure the class name is set and stored in the global variable
+    if (!currentClassName) {
+        alert("Please enter a class name.");
+        return;
+    }
+
+    const editor = document.getElementById('modelEditorDisplay');
+    if (!editor) {
+        console.error("Editor element not found.");
+        return;
+    }
+
+    const modelCode = `class ${currentClassName}(models.Model):\n${editor.value}`;
+
+    fetch(`/apps/${currentAppId}/save_models/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')  // Ensure this function is correctly defined
+        },
+        body: JSON.stringify({
+            appId: currentAppId,
+            modelCode: modelCode
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            $('#addFieldsModal').modal('hide');
+            loadModels(currentAppId)
+            createAndShowModal(currentAppId);
+
+            alertMessage("Class saved successfully!", 'alert alert-success');
+        } else {
+            alert(`Failed to save class: ${data.error}`);
+        }
+    })
+    .catch(error => console.error('Error:', error));
+}
+
+
+function saveModels(appId) {
+    const editor = document.getElementById(`modelEditor-${appId}`);
+    const modelCode = editor.value;
+
+    // Make an AJAX request to save the model code
+    fetch(`/apps/${appId}/save_models/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken') // Ensure you include the CSRF token
+        },
+        body: JSON.stringify({ model_code: modelCode })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alertMessage('Models saved successfully', 'alert alert-success');
+        } else {
+            alertMessage('Error saving models: ' + data.error, 'alert alert-danger');
+        }
+    })
+    .catch(error => console.error('Error:', error));
+}
+function addClassToEditor() {
+    var className = document.getElementById('className').value;
+    if (className && fields.length > 0) {
+        const appId = currentAppId; // Assuming you have a way to get the current app ID
+        addClass(appId, className, fields.join(','));
+        
+        // Clear the fields array and close the modal
+        fields = [];
+        document.getElementById('addClassModal').querySelector('.modal-body').innerHTML = '';
+        $('#addClassModal').modal('hide');
+        
+        // Optionally, refresh the model editor
+        document.getElementById(`modelEditor-${appId}`).value = '';
+    } else {
+        alert('Please enter a class name and add fields.');
+    }
+}
+
 
 document.addEventListener('DOMContentLoaded', function() {
     loadAppList();

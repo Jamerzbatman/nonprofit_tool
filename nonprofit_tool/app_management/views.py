@@ -1,6 +1,12 @@
 from django.core.management import call_command
+from django.shortcuts import get_object_or_404
 from .models import App, Payment
 from .forms import AppForm
+from django.apps import apps
+import os, json
+import django
+import traceback
+from django.conf import settings
 from django.http import JsonResponse
 
 
@@ -98,8 +104,96 @@ def delete_payment(request, payment_id):
         except Payment.DoesNotExist:
             return JsonResponse({'success': False, 'error': 'Payment not found'}, status=404)
     return JsonResponse({'success': False, 'error': 'Invalid request method'}, status=400)
-    
+
 
 def fetch_payments(request, app_id):
     payments = Payment.objects.filter(app_id=app_id).values('id', 'payment_type', 'amount')
     return JsonResponse({'payments': list(payments)})
+
+
+def fetch_model_details(request, app_id):
+    app = get_object_or_404(App, id=app_id)
+    app_name = app.name.lower().replace(' ', '_')
+
+    # Path to the models.py file for the app
+    models_file_path = os.path.join(settings.BASE_DIR, app_name, 'models.py')
+
+    if os.path.exists(models_file_path):
+        with open(models_file_path, 'r') as file:
+            models_code = file.read()
+        return JsonResponse({'models_code': models_code})
+    else:
+        return JsonResponse({'success': False, 'error': 'Models file not found'}, status=404)
+
+
+def format_model_code(class_name, fields):
+    """
+    Formats the model code for a class with only the class definition and __str__ method.
+    """
+    # Add the class definition with proper class name
+    model_code = ""
+    model_code += f"class {class_name}\n"
+    
+    
+    # Add the fields with proper indentation
+    for field in fields:
+        if field.strip():  # Avoid adding empty lines
+            model_code += f"    {field.strip()}\n"
+    print(model_code)
+
+    # Add a __str__ method using the first field's name (if available)
+    if fields:
+        first_field_name = fields[1].split('=')[0].strip()  # Get the first field's name
+        print(first_field_name)
+        model_code += f"\n    def __str__(self):\n"
+        model_code += f"        return f'{{self.{first_field_name}}}'\n"
+    else:
+        model_code += f"\n    def __str__(self):\n"
+        model_code += f"        return 'Object'\n"
+
+    # Print the generated model code for debugging
+    print(model_code)
+
+    return model_code
+
+
+def save_model_details(request, app_id):
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            app_id = data.get('appId')
+            model_code_raw = data.get('modelCode')
+            
+            if not app_id or not model_code_raw:
+                return JsonResponse({'success': False, 'error': 'App ID and model code are required'}, status=400)
+            
+            app = get_object_or_404(App, id=app_id)
+            app_label = app.name.lower()
+            models_path = os.path.join(settings.BASE_DIR, app_label, 'models.py')
+            
+            # Ensure the directory exists
+            if not os.path.exists(os.path.dirname(models_path)):
+                os.makedirs(os.path.dirname(models_path))
+                        
+            # Parse the raw model code to extract the class name and fields
+            lines = model_code_raw.strip().split('\n')
+            class_name = lines[0].split()[1]  # Extracts class name from "class ClassName(models.Model):"
+            fields = lines[1:]  # The rest are the fields
+            # Format the new class code
+            new_model_code = format_model_code(class_name, fields)
+            
+            # Write the updated code to the file
+            with open(models_path, 'a') as file:
+                file.write("\n\n" + new_model_code)
+            
+            # Optionally reload models (if necessary)
+            django.setup()
+
+            return JsonResponse({'success': True})
+        except Exception as e:
+            # Log the detailed error for debugging
+            error_message = traceback.format_exc()
+            print(error_message)  # Log to console (or consider logging to a file)
+            return JsonResponse({'success': False, 'error': str(e)}, status=500)
+    
+    return JsonResponse({'success': False, 'error': 'Invalid request method'}, status=405)
