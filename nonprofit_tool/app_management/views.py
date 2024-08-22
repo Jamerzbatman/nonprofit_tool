@@ -234,8 +234,6 @@ def save_model_details(request, app_id):
             return JsonResponse({'success': True})
         except Exception as e:
             return JsonResponse({'success': False, 'error': str(e)})
-    
-    return JsonResponse({'success': False, 'error': 'Invalid request method'})
 
 def register_models_code(model_names):
     return '\n'.join([f'admin.site.register({model_name})' for model_name in model_names])

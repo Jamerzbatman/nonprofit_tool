@@ -126,7 +126,10 @@
                     <button type="button" class="btn btn-secondary" onclick="addFieldToClass('boolean')">Boolean Field</button>
                     <button type="button" class="btn btn-secondary" onclick="addFieldToClass('image')">Image Field</button>
                     <button type="button" class="btn btn-secondary" onclick="addFieldToClass('file')">File Field</button>
-                </div>
+                    <button type="button" class="btn btn-secondary" onclick="addFieldToClass('password')">Password Field</button>
+                    <button type="button" class="btn btn-secondary" onclick="addFieldToClass('email')">Email Field</button>
+                    <button type="button" class="btn btn-secondary" onclick="addFieldToClass('url')">URL Field</button>
+                    <button type="button" class="btn btn-secondary" onclick="addFieldToClass('slug')">Slug Field</button>                </div>
                 <div class="mb-3">
                     <textarea id="modelEditorDisplay" class="form-control" rows="10"></textarea>
                 </div>
@@ -580,7 +583,18 @@ function addFieldToClass(type) {
         case 'file':
             fieldCode = '\n    file_field = models.FileField(upload_to="files/")';
             break;
-        // Add more cases for additional field types
+        case 'password':
+            fieldCode = '\n    password_field = models.CharField(max_length=128, help_text="Password")';
+            break;
+        case 'email':
+            fieldCode = '\n    email_field = models.EmailField()';
+            break;
+        case 'url':
+            fieldCode = '\n    url_field = models.URLField()';
+            break;
+        case 'slug':
+            fieldCode = '\n    slug_field = models.SlugField(max_length=255, unique=True)';
+            break;        // Add more cases for additional field types
     }
     editor.value += fieldCode;
 }
