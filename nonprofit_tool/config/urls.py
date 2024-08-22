@@ -5,6 +5,7 @@ from django.contrib import admin
 
 
 urlpatterns = [
+    path('something_new/', include('something_new.urls')),
     path('emails/', include('emails.urls')),
     path('admin/', admin.site.urls),
     path('apps/', include('app_management.urls')),

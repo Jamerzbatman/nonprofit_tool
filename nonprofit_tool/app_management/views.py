@@ -5,6 +5,8 @@ from .forms import AppForm
 from django.apps import apps
 import os, json
 import django
+import ast
+import subprocess
 import traceback
 from django.conf import settings
 from django.http import JsonResponse
@@ -112,18 +114,20 @@ def fetch_payments(request, app_id):
 
 
 def fetch_model_details(request, app_id):
+    
     app = get_object_or_404(App, id=app_id)
     app_name = app.name.lower().replace(' ', '_')
 
     # Path to the models.py file for the app
     models_file_path = os.path.join(settings.BASE_DIR, app_name, 'models.py')
-
     if os.path.exists(models_file_path):
         with open(models_file_path, 'r') as file:
             models_code = file.read()
         return JsonResponse({'models_code': models_code})
     else:
         return JsonResponse({'success': False, 'error': 'Models file not found'}, status=404)
+
+
 
 
 def format_model_code(class_name, fields):
@@ -139,12 +143,10 @@ def format_model_code(class_name, fields):
     for field in fields:
         if field.strip():  # Avoid adding empty lines
             model_code += f"    {field.strip()}\n"
-    print(model_code)
 
     # Add a __str__ method using the first field's name (if available)
     if fields:
         first_field_name = fields[1].split('=')[0].strip()  # Get the first field's name
-        print(first_field_name)
         model_code += f"\n    def __str__(self):\n"
         model_code += f"        return f'{{self.{first_field_name}}}'\n"
     else:
@@ -156,8 +158,89 @@ def format_model_code(class_name, fields):
 
     return model_code
 
+def extract_model_names(models_path):
+    model_names = []
+    try:
+        with open(models_path, 'r') as file:
+            file_content = file.read()
+        
+        # Parse the file content into an AST
+        tree = ast.parse(file_content)
+        
+        # Extract class names that inherit from models.Model
+        for node in ast.walk(tree):
+            if isinstance(node, ast.ClassDef):
+                # Check if the class inherits from models.Model
+                if any(
+                    isinstance(base, ast.Attribute) and base.attr == 'Model'
+                    for base in node.bases
+                ):
+                    model_names.append(node.name)
+                    
+    except Exception as e:
+        print(f"Error extracting model names: {e}")
+
+    return model_names
+
+def generate_admin_code(model_names):
+    print("Generating admin code for models:", model_names)
+    
+    if not model_names:
+        return "from django.contrib import admin\n\n# No models to register."
+
+    admin_code = "from django.contrib import admin\n"
+    admin_code += "from .models import " + ", ".join(model_names) + "\n\n"
+    admin_code += "# Register your models here.\n"
+
+    for model_name in model_names:
+        admin_code += f"admin.site.register({model_name})\n"
+    
+
+    
+    return admin_code
 
 def save_model_details(request, app_id):
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            model_code = data.get('model_code')
+
+            # Get the app and determine the app label
+            app = get_object_or_404(App, id=app_id)
+            app_label = app.name.lower()
+            
+            # Paths to models.py and admin.py
+            models_path = os.path.join(settings.BASE_DIR, app_label, 'models.py')
+            admin_path = os.path.join(settings.BASE_DIR, app_label, 'admin.py')
+            
+            # Write the model code to the models.py file
+            with open(models_path, 'w') as file:
+                file.write(model_code)
+
+            # Extract model names from models.py
+            model_names = extract_model_names(models_path)
+            
+            # Generate admin.py content
+            admin_code = generate_admin_code(model_names)
+
+            # Write the admin code to the admin.py file
+            with open(admin_path, 'w') as file:
+                file.write(admin_code)
+
+            # Run Django management commands
+            subprocess.run(['python3', 'manage.py', 'makemigrations'], check=True, cwd=settings.BASE_DIR)
+            subprocess.run(['python3', 'manage.py', 'migrate'], check=True, cwd=settings.BASE_DIR)
+            
+            return JsonResponse({'success': True})
+        except Exception as e:
+            return JsonResponse({'success': False, 'error': str(e)})
+    
+    return JsonResponse({'success': False, 'error': 'Invalid request method'})
+
+def register_models_code(model_names):
+    return '\n'.join([f'admin.site.register({model_name})' for model_name in model_names])
+
+def save_class(request, app_id):
     if request.method == 'POST':
         try:
             data = json.loads(request.body)
