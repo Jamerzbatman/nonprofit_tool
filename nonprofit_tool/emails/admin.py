@@ -1,3 +1,5 @@
 from django.contrib import admin
+from .models import EmailConfiguration
 
-# No models to register.
+# Register your models here.
+admin.site.register(EmailConfiguration)

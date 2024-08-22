@@ -153,9 +153,6 @@ def format_model_code(class_name, fields):
         model_code += f"\n    def __str__(self):\n"
         model_code += f"        return 'Object'\n"
 
-    # Print the generated model code for debugging
-    print(model_code)
-
     return model_code
 
 def extract_model_names(models_path):
@@ -178,12 +175,11 @@ def extract_model_names(models_path):
                     model_names.append(node.name)
                     
     except Exception as e:
-        print(f"Error extracting model names: {e}")
+        return f"Error extracting model names: {e}"
 
     return model_names
 
 def generate_admin_code(model_names):
-    print("Generating admin code for models:", model_names)
     
     if not model_names:
         return "from django.contrib import admin\n\n# No models to register."
@@ -274,7 +270,6 @@ def save_class(request, app_id):
         except Exception as e:
             # Log the detailed error for debugging
             error_message = traceback.format_exc()
-            print(error_message)  # Log to console (or consider logging to a file)
             return JsonResponse({'success': False, 'error': str(e)}, status=500)
     
     return JsonResponse({'success': False, 'error': 'Invalid request method'}, status=405)

@@ -1,18 +1,9 @@
 <style>
 /* Ensure the base z-index for Bootstrap modals */
-.modal {
-    z-index: 1050; /* Default Bootstrap z-index for modals */
-}
-#addFieldsModal {
-    z-index: 1070; /* Higher than the default */
-}
-/* Custom z-index for your specific modals */
-#addClassNameModal {
-    z-index: 1060; /* Higher than the default */
-}
-
-#modelModal {
-    z-index: 1055; /* Slightly lower than addClassNameModal */
+.modal-dialog {
+    max-width: 80%; /* Limits the width to 90% of the viewport, adjust as needed */
+    width: auto; /* Allows the modal to auto-size based on content */
+    margin: 1.75rem auto; /* Centers the modal */
 }
 </style>
 <!-- Add App Button -->
@@ -248,7 +239,7 @@ function loadAppList() {
                                 <input type="hidden" id="appId-${app.id}" name="app_id" value="${app.id}">
                                 <div class="mb-3">
                                     <label for="paymentType-${app.id}" class="form-label">Payment Type</label>
-                                    <select class="form-select" id="paymentType-${app.id}" name="payment_type" required>
+                                    <select class="form-select" id="paymentType-${app.id}" name="payment_type" data-app-id="${app.id}" required>
                                         <option value="once">One Time</option>
                                         <option value="monthly">Monthly</option>
                                         <option value="yearly">Yearly</option>
@@ -302,7 +293,6 @@ function loadAppList() {
         // Attach event listener to the payment type select to disable amount input if 'Free' is selected
         document.querySelectorAll('[id^="paymentType-"]').forEach(select => {
             const paymentAmountInput = document.getElementById(`paymentAmount-${select.dataset.appId}`);
-
             select.addEventListener('change', function() {
                 if (select.value === 'free') {
                     paymentAmountInput.value = '00.00'; // Set value to 00.00
@@ -448,10 +438,9 @@ function loadModels(appId) {
         alertMessage('Error loading models', 'alert alert-danger');
     });
 }
-function hideCreateAndShowModal(appId) {
-   
-        $(`#modelModal-${appId}`).removeClass('show'); // Remove the 'show' class
-        $(`#modelModal-${appId}`).css('display', ''); // Reset the display property
+function hideModal(ModalId) {
+        $(ModalId).removeClass('show'); // Remove the 'show' class
+        $(ModalId).css('display', ''); // Reset the display property
 
         // Remove the backdrop manually
         const backdrop = document.querySelector('.modal-backdrop');
@@ -475,7 +464,7 @@ function createAndShowModal(appId) {
                     <div class="modal-content">
                         <div class="modal-header">
                             <h5 class="modal-title" id="modelModalLabel-${appId}">Manage Models for App ${appId}</h5>
-                            <button type="button" class="btn-close" onclick="hideCreateAndShowModal(${appId})"></button>
+                            <button type="button" class="btn-close" onclick="hideModal('#${modalId}')"></button>
                         </div>
                         <div class="modal-body">
                             <button type="button" class="btn btn-secondary" onclick="showAddClassNameModal()">Add New Class</button>
@@ -504,6 +493,7 @@ function showModelsModal(appId) {
 
 
 function showAddClassNameModal() {
+    hideModal(`#modelModal-${currentAppId}`)
     const modalElement = document.getElementById('addClassNameModal');
     const modal = new bootstrap.Modal(modalElement);
     modal.show();
@@ -515,8 +505,7 @@ function showAddFieldsModal() {
         // Hide Add Class Name Modal
         var addClassNameModalElement = document.getElementById('addClassNameModal');
         if (addClassNameModalElement) {
-            var addClassNameModal = new bootstrap.Modal(addClassNameModalElement);
-            addClassNameModal.hide();
+            hideModal(`#addClassNameModal`)
         } else {
             console.error('Add Class Name Modal element not found');
         }
