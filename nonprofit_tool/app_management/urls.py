@@ -10,4 +10,9 @@ urlpatterns = [
     path('fetch/<int:app_id>/models/', views.fetch_model_details, name='fetch_models'),
     path('<int:app_id>/save_class/', views.save_class, name='save_class'),
     path('<int:app_id>/save_models/', views.save_model_details, name='save_models'),
+    path('<int:app_id>/functions/', views.manage_functions, name='manage_functions'),
+    path('<int:app_id>/functions/add/', views.add_function, name='add_function'),
+    path('functions/<int:function_id>/edit/', views.edit_function, name='edit_function'),
+
+
 ]

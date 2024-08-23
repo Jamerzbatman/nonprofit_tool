@@ -29,6 +29,7 @@ INSTALLED_APPS = [
     'bootstrap4',
     'organization',
     'questionnaires',
+    'rest_framework',
     'app_management',
     'administration',
     'django.contrib.admin',

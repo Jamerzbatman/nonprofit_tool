@@ -1,8 +1,10 @@
 from django.core.management import call_command
 from django.shortcuts import get_object_or_404
-from .models import App, Payment
-from .forms import AppForm
-from django.apps import apps
+from .models import App, Payment, Function
+from .forms import AppForm, AddFunctionForm
+from django.template.loader import render_to_string
+from rest_framework import serializers
+
 import os, json
 import django
 import ast
@@ -273,3 +275,58 @@ def save_class(request, app_id):
             return JsonResponse({'success': False, 'error': str(e)}, status=500)
     
     return JsonResponse({'success': False, 'error': 'Invalid request method'}, status=405)
+
+
+def add_function(request, app_id):
+    app = get_object_or_404(App, pk=app_id)
+    
+    if request.method == 'POST':
+        form = AddFunctionForm(request.POST)
+        if form.is_valid():
+            try:
+                function = form.save(commit=False)
+                function.app_relation = app
+                function.save()
+                return JsonResponse({'success': True})
+            except Exception as e:
+                return JsonResponse({'success': False, 'error': str(e)}, status=500)
+        else:
+            return JsonResponse({'success': False, 'error': form.errors.as_json()}, status=400)
+    else:
+        form = AddFunctionForm()
+    
+    form_html = render_to_string('functions/add_function.html', {'form': form, 'app': app}, request)
+    return JsonResponse({'success': True, 'form_html': form_html})
+
+
+def edit_function(request, function_id):
+    function = get_object_or_404(Function, pk=function_id)
+    
+    if request.method == 'POST':
+        form = AddFunctionForm(request.POST, instance=function)
+        if form.is_valid():
+            try:
+                form.save()
+                return JsonResponse({'success': True})
+            except Exception as e:
+                return JsonResponse({'success': False, 'error': str(e)}, status=500)
+        else:
+            return JsonResponse({'success': False, 'error': form.errors.as_json()}, status=400)
+    else:
+        form = AddFunctionForm(instance=function)
+
+    form_html = render_to_string('functions/edit_function.html', {'form': form, 'function': function}, request)
+    return JsonResponse({'success': True, 'form_html': form_html})
+
+class FunctionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Function
+        fields = ['id', 'name', 'description', 'parameters', 'return_type', 'code']
+
+def manage_functions(request, app_id):
+    app = get_object_or_404(App, pk=app_id)
+    functions = Function.objects.filter(app_relation=app)
+    
+    functions_data = FunctionSerializer(functions, many=True).data
+    
+    return JsonResponse({'success': True, 'functions': functions_data})

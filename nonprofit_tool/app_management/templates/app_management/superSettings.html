@@ -11,6 +11,52 @@
     Add App
 </button>
 
+<div class="modal fade" id="addFunctionModal" tabindex="-1" aria-labelledby="addFunctionModalLabel-${app.id}" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="addFunctionModalLabel">Add Function for App</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="addFunctionForm" onsubmit="submitFunctionForm(); return false;">
+                    <div class="mb-3">
+                        <label for="functionName" class="form-label">Function Name</label>
+                        <input type="text" class="form-control" id="functionName" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="functionUrl" class="form-label">URL</label>
+                        <input type="text" class="form-control" id="functionResult" readonly>
+                    </div>
+                    <div class="mb-3">
+                        <label for="functionDescription" class="form-label">Description</label>
+                        <textarea class="form-control" id="functionDescription" rows="3"></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label for="functionCodeEditor" class="form-label">Function Code</label>
+                        <div id="functionCodeEditor" style="height: 200px; width: 100%;"></div>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Save Function</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- Functions Modal -->
+<div class="modal fade" id="functionsModal" tabindex="-1" aria-labelledby="functionsModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="functionsModalLabel">Functions for App</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div id="functionList"></div>
+                <!-- Add Function Form Goes Here -->
+            </div>
+        </div>
+    </div>
+</div>
 <!-- Add App Modal -->
 <div class="modal fade" id="addAppModal" tabindex="-1" aria-labelledby="addAppModalLabel" aria-hidden="true">
     <div class="modal-dialog">
@@ -154,6 +200,70 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 
+function loadFunctions(appId) {    
+    fetch(`/apps/${appId}/functions/`)
+        .then(response => response.json())
+        .then(data => {
+            // Correct Element ID based on the specific app ID
+            const functionsModal = document.getElementById(`functionsModal`);
+            const modal = new bootstrap.Modal(functionsModal); 
+            const functionList = document.getElementById(`functionList`);
+            if (functionList) {
+                functionList.innerHTML = ''; // Clear existing content
+                
+                if (data.success && data.functions.length > 0) {
+                    const listHTML = data.functions.map(func => `
+                        <div class="function-item">
+                            <h6>${func.name}</h6>
+                            <p>${func.description}</p>
+                            <button class="btn btn-sm btn-secondary" onclick="editFunction(${func.id})">Edit</button>
+                        </div>
+                    `).join('');
+                    functionList.innerHTML = listHTML;
+                } else {
+                    functionList.innerHTML = `
+                        <p>No functions found for this app.</p>
+                        <button class="btn btn-primary" onclick="addFunction(${appId})">Add a Function</button>
+                    `;
+                }
+            } else {
+                console.error(`Element with id="functionList-${appId}" does not exist in the DOM.`);
+            }
+            modal.show();
+    })
+    .catch(error => console.error('Error fetching functions:', error));
+}
+
+let editor;
+
+function addFunction(appId) {
+    const functionsModal = document.getElementById('addFunctionModal');
+    const modal = new bootstrap.Modal(functionsModal);
+    const functionUrlInput = document.getElementById('functionResult').parentElement;
+    functionUrlInput.outerHTML = `
+        <label for="inputPathPart" class="form-label">Path:</label>
+        <div class="form-inline mb-3">
+            <span>path(</span>
+            <input type="text" id="inputPathPart" class="form-control" placeholder="input" required>
+            <span>, views.</span>
+            <input type="text" id="inputViewPart" class="form-control" placeholder="input" required>
+            <span>, name='</span>
+            <input type="text" id="inputNamePart" class="form-control" placeholder="input" required>
+            <span>')</span>
+        </div>
+    `;
+    // Initialize Ace Editor only once
+    if (!editor) {
+        const editorElement = document.getElementById("functionCodeEditor");
+        editor = ace.edit(editorElement);  // Initialize the editor
+        editor.setTheme("ace/theme/monokai");
+        editor.session.setMode("ace/mode/python"); // Adjust syntax as per your needs
+    }
+
+    modal.show();
+    hideModal(`#functionsModal`)
+}
+
 document.getElementById('addAppForm').addEventListener('submit', function(e) {
     e.preventDefault();
     
@@ -214,6 +324,9 @@ function loadAppList() {
                     </button>
                     <button type="button" class="btn btn-secondary ms-2" data-app-id="${app.id}" onclick="showModelsModal(${app.id})">
                         Manage Models
+                    </button>
+                    <button type="button" class="btn btn-info ms-2"  data-app-id="${app.id}" onclick="addFunctionModal(${app.id})">
+                        Functions
                     </button>
                 </div>
             `;
@@ -483,6 +596,11 @@ function createAndShowModal(appId) {
     const modalElement = document.getElementById(modalId);
     const modal = new bootstrap.Modal(modalElement);
     modal.show();
+}
+
+function addFunctionModal(appId) {
+    loadFunctions(appId);
+    currentAppId = appId; // Set the current app ID
 }
 
 
