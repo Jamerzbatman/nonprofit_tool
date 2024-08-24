@@ -4,6 +4,7 @@ from .models import App, Payment, Function
 from .forms import AppForm, AddFunctionForm
 from django.template.loader import render_to_string
 from rest_framework import serializers
+import sys
 
 import os, json
 import django
@@ -330,3 +331,31 @@ def manage_functions(request, app_id):
     functions_data = FunctionSerializer(functions, many=True).data
     
     return JsonResponse({'success': True, 'functions': functions_data})
+
+def install_pip_package(request):
+    if request.method == 'POST':
+        data = json.loads(request.body)
+        package_name = data.get('package_name')
+
+        try:
+            subprocess.check_call([sys.executable, "-m", "pip", "install", package_name])
+            # Update the requirements.txt file
+            requirements_path = os.path.join(settings.BASE_DIR, 'requirements.txt')
+            with open(requirements_path, 'w') as f:
+                subprocess.check_call([sys.executable, "-m", "pip", "freeze"], stdout=f)  
+            
+            return JsonResponse({'success': True})
+        
+        except subprocess.CalledProcessError as e:
+            return JsonResponse({'success': False, 'error': str(e)})
+
+    return JsonResponse({'success': False, 'error': 'Invalid request method'})
+
+def get_installed_packages(request):
+    try:
+        result = subprocess.run([sys.executable, "-m", "pip", "freeze"], stdout=subprocess.PIPE, text=True)
+        packages = result.stdout.splitlines()
+        packages = [pkg.split('==')[0] for pkg in packages]  # Extract package names
+        return JsonResponse({'success': True, 'packages': packages})
+    except subprocess.CalledProcessError as e:
+        return JsonResponse({'success': False, 'error': str(e)})

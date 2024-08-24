@@ -1,7 +1,7 @@
 <style>
 /* Ensure the base z-index for Bootstrap modals */
 .modal-dialog {
-    max-width: 80%; /* Limits the width to 90% of the viewport, adjust as needed */
+    max-width: 85%; /* Limits the width to 90% of the viewport, adjust as needed */
     width: auto; /* Allows the modal to auto-size based on content */
     margin: 1.75rem auto; /* Centers the modal */
 }
@@ -20,21 +20,64 @@
             </div>
             <div class="modal-body">
                 <form id="addFunctionForm" onsubmit="submitFunctionForm(); return false;">
-                    <div class="mb-3">
-                        <label for="functionName" class="form-label">Function Name</label>
-                        <input type="text" class="form-control" id="functionName" required>
+                    <div class="row">
+                        <div class="col-md-8">
+                            <div class="mb-3">
+                                <label for="functionName" class="form-label">Function Name</label>
+                                <input type="text" class="form-control" id="functionName" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="functionUrl" class="form-label">URL</label>
+                                <input type="text" class="form-control" id="functionResult" readonly>
+                            </div>
+                            <div class="mb-3">
+                                <label for="functionDescription" class="form-label">Description</label>
+                                <textarea class="form-control" id="functionDescription" rows="3"></textarea>
+                            </div>
+                            <div class="mb-3">
+                                <label for="functionPackages" class="form-label">Selected Packages</label>
+                                <div id="functionPackages" style="height: 50px; width: 100%; border: 1px solid #ced4da; padding: 10px; border-radius: 5px;">
+                                    <!-- Selected packages will appear here -->
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label for="functionCodeEditor" class="form-label">Function Code</label>
+                                <div id="functionCodeEditor" style="height: 200px; width: 100%;"></div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label for="openAIChat" class="form-label">Chat with OpenAI</label>
+                                <div id="openAIChat" style="height: 500px; width: 100%; border: 1px solid #ced4da; padding: 10px; border-radius: 5px; overflow-y: auto;">
+                                    <!-- Chat messages will appear here -->
+                                </div>
+                            </div>
+                            <div class="input-group mb-3">
+                                <input type="text" class="form-control" id="openAIInput" placeholder="Type your message...">
+                                <button type="button" class="btn btn-primary" id="sendOpenAIMessage">Send</button>
+                            </div>
+                        </div>
+                        <div class="col-md-8">
+                            <!-- New Section for Installing Pip Packages -->
+                            <div class="mb-3">
+                                <label for="pipPackageName" class="form-label">Install Pip Package</label>
+                                <div class="input-group">
+                                    <input type="text" class="form-control" id="pipPackageName" placeholder="Package name" required>
+                                    <button type="button" class="btn btn-primary" id="installPipPackage">Install</button>
+                                </div>
+                            </div>   
+                        </div>
+
                     </div>
                     <div class="mb-3">
-                        <label for="functionUrl" class="form-label">URL</label>
-                        <input type="text" class="form-control" id="functionResult" readonly>
+                        <button type="button" class="btn btn-secondary" id="togglePackagesButton">Select Packages</button>
                     </div>
-                    <div class="mb-3">
-                        <label for="functionDescription" class="form-label">Description</label>
-                        <textarea class="form-control" id="functionDescription" rows="3"></textarea>
-                    </div>
-                    <div class="mb-3">
-                        <label for="functionCodeEditor" class="form-label">Function Code</label>
-                        <div id="functionCodeEditor" style="height: 200px; width: 100%;"></div>
+                    <!-- Section for Listing Installed Pip Packages with checkboxes -->
+                    <div class="mb-3" id="packagesContainer" style="display: none;">
+                        <label class="form-label">Installed Packages</label>
+                        <div id="installedPackagesCheckboxes">
+                            <!-- Checkboxes will be populated dynamically -->
+                        </div>
                     </div>
                     <button type="submit" class="btn btn-primary">Save Function</button>
                 </form>
@@ -239,19 +282,105 @@ let editor;
 function addFunction(appId) {
     const functionsModal = document.getElementById('addFunctionModal');
     const modal = new bootstrap.Modal(functionsModal);
-    const functionUrlInput = document.getElementById('functionResult').parentElement;
-    functionUrlInput.outerHTML = `
-        <label for="inputPathPart" class="form-label">Path:</label>
-        <div class="form-inline mb-3">
-            <span>path(</span>
-            <input type="text" id="inputPathPart" class="form-control" placeholder="input" required>
-            <span>, views.</span>
-            <input type="text" id="inputViewPart" class="form-control" placeholder="input" required>
-            <span>, name='</span>
-            <input type="text" id="inputNamePart" class="form-control" placeholder="input" required>
-            <span>')</span>
-        </div>
-    `;
+
+    // Find and remove the existing `functionResult` element
+    const functionUrlContainer = document.getElementById('functionResult').closest(".mb-3");
+    if (functionUrlContainer) {
+        functionUrlContainer.innerHTML = `
+            <label for="inputPathPart" class="form-label">Path:</label>
+            <div class="form-inline mb-3">
+                <span>path('</span>
+                <input type="text" id="inputPathPart" class="form-control" placeholder="input" required>
+                <span>/', views.</span>
+                <input type="text" id="inputViewPart" class="form-control" placeholder="input" required>
+                <span>, name='</span>
+                <input type="text" id="inputNamePart" class="form-control" placeholder="input" required>
+                <span>')</span>
+            </div>
+        `;
+
+        const functionNameInput = document.getElementById('functionName');
+        const inputNamePart = document.getElementById('inputNamePart');
+        const inputViewPart = document.getElementById('inputViewPart');
+        const inputPathPart = document.getElementById('inputPathPart');
+
+        functionNameInput.addEventListener('input', function() {
+            const sanitizedValue = functionNameInput.value.trim().toLowerCase().replace(/\s+/g, '_');
+            const urlSanitizedValue = functionNameInput.value.trim().toLowerCase().replace(/\s+/g, '-');
+            editor.setValue(`def ${sanitizedValue}(request):\n    # Code goes here...\n`);
+            inputNamePart.value = sanitizedValue;
+            inputViewPart.value = sanitizedValue;
+            inputPathPart.value = urlSanitizedValue;
+            editor.clearSelection(); 
+        });
+
+        inputViewPart.addEventListener('input', function() {
+            const sanitizedFunctionName = inputViewPart.value.trim().toLowerCase().replace(/\s+/g, '_');
+            editor.setValue(`def ${sanitizedFunctionName}(request):\n    # Code goes here...\n`);
+            editor.clearSelection();  // Remove selection so the text doesn't appear selected
+        });
+    }
+
+    // Define functionPackagesDiv to avoid the reference error
+    const functionPackagesDiv = document.getElementById('functionPackages');
+
+  // Fetch and populate installed pip packages with buttons
+  function fetchInstalledPackages() {
+        fetch('/apps/get-installed-packages/')
+            .then(response => response.json())
+            .then(data => {
+                const installedPackagesCheckboxes = document.getElementById('installedPackagesCheckboxes');
+                installedPackagesCheckboxes.innerHTML = '';  // Clear existing buttons
+
+                data.packages.forEach(pkg => {
+                    const button = document.createElement('button');
+                    button.type = 'button';
+                    button.classList.add('btn', 'btn-outline-primary', 'm-1');
+                    button.textContent = pkg;
+
+                    // Add click event to append or remove the package from functionPackagesDiv
+                    button.addEventListener('click', function() {
+                    let currentPackages = functionPackagesDiv.textContent.trim().split(',').map(pkg => pkg.trim()).filter(pkg => pkg);
+                    const pkgIndex = currentPackages.indexOf(pkg);
+
+                    if (pkgIndex === -1) {
+                        // Add package if it's not already in the list
+                        currentPackages.push(pkg);
+                    } else {
+                        // Remove package if it is already in the list
+                        currentPackages.splice(pkgIndex, 1);
+                    }
+
+                    functionPackagesDiv.textContent = currentPackages.join(', ');
+
+                    // Add click event to each package in functionPackagesDiv for removal
+                    functionPackagesDiv.querySelectorAll('span').forEach(pkgSpan => {
+                        pkgSpan.addEventListener('click', function() {
+                            const spanPkg = pkgSpan.textContent.trim();
+                            currentPackages = currentPackages.filter(pkg => pkg !== spanPkg);
+                            functionPackagesDiv.textContent = currentPackages.join(', ');
+                        });
+                    });
+                });
+                    installedPackagesCheckboxes.appendChild(button);
+                });
+            })
+            .catch(error => console.error('Error fetching installed packages:', error));
+    }
+
+    // Toggle the display of the packagesContainer
+    const togglePackagesButton = document.getElementById('togglePackagesButton');
+    const packagesContainer = document.getElementById('packagesContainer');
+
+    togglePackagesButton.addEventListener('click', function() {
+        if (packagesContainer.style.display === 'none') {
+            packagesContainer.style.display = 'block';
+            fetchInstalledPackages();  // Fetch packages when the container is shown
+        } else {
+            packagesContainer.style.display = 'none';
+        }
+    });
+
     // Initialize Ace Editor only once
     if (!editor) {
         const editorElement = document.getElementById("functionCodeEditor");
@@ -259,11 +388,40 @@ function addFunction(appId) {
         editor.setTheme("ace/theme/monokai");
         editor.session.setMode("ace/mode/python"); // Adjust syntax as per your needs
     }
+    // Handle Pip Package Installation
+    const installPipButton = document.getElementById('installPipPackage');
+    const pipPackageNameInput = document.getElementById('pipPackageName');
+
+    installPipButton.addEventListener('click', function() {
+        const packageName = pipPackageNameInput.value.trim();
+        if (packageName) {
+            fetch('/apps/install-pip-package/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCSRFToken()  // Assumes you have a function to get the CSRF token
+                },
+                body: JSON.stringify({ package_name: packageName })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    pipPackageName.value = `Package ${packageName} installed successfully!`;
+                    alertMessage(`Package ${packageName} installed successfully!`, 'alert alert-success');
+                    setTimeout(function() {
+                        pipPackageName.value = ``;
+                    }, 3000);
+                } else {
+                    alertMessage(`Failed to install package: ${data.error}`, 'alert alert-danger');
+                }
+            })
+            .catch(error => console.error('Error installing package:', error));
+        }
+    });
 
     modal.show();
-    hideModal(`#functionsModal`)
+    hideModal(`#functionsModal`);
 }
-
 document.getElementById('addAppForm').addEventListener('submit', function(e) {
     e.preventDefault();
     
