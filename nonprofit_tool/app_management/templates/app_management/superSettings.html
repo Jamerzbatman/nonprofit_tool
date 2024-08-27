@@ -1,9 +1,34 @@
 <style>
-/* Ensure the base z-index for Bootstrap modals */
 .modal-dialog {
-    max-width: 85%; /* Limits the width to 90% of the viewport, adjust as needed */
-    width: auto; /* Allows the modal to auto-size based on content */
-    margin: 1.75rem auto; /* Centers the modal */
+    max-width: 85%;
+    width: auto;
+    margin: 1.75rem auto;
+}
+
+
+.col-md-4 {
+    display: flex;
+    flex-direction: column;
+}
+
+#openAIChat {
+    flex-grow: 1;
+    overflow-y: auto;
+    word-wrap: break-word; /* Break long words */
+    padding: 10px;
+    word-break: break-word; /* Ensures long words break to prevent overflow */
+    max-width: 100%; /* Ensure it doesn't extend beyond the column */
+}
+
+pre {
+    white-space: pre-wrap; /* Ensure long text wraps */
+    word-wrap: break-word;  /* Break long words to avoid overflow */
+    background: transparent; /* Remove background to blend with the chat */
+    border: none; /* Remove border */
+    padding: 0; /* Remove padding */
+    margin: 0; /* Remove margin */
+    max-width: 100%; /* Ensure code block does not exceed container width */
+    overflow: auto; /* Enable scrolling for long lines if necessary */
 }
 </style>
 <!-- Add App Button -->
@@ -21,7 +46,7 @@
             <div class="modal-body">
                 <form id="addFunctionForm" onsubmit="submitFunctionForm(); return false;">
                     <div class="row">
-                        <div class="col-md-8">
+                        <div class="col-md-6">
                             <div class="mb-3">
                                 <label for="functionName" class="form-label">Function Name</label>
                                 <input type="text" class="form-control" id="functionName" required>
@@ -35,9 +60,13 @@
                                 <textarea class="form-control" id="functionDescription" rows="3"></textarea>
                             </div>
                             <div class="mb-3">
-                                <label for="functionPackages" class="form-label">Selected Packages</label>
-                                <div id="functionPackages" style="height: 50px; width: 100%; border: 1px solid #ced4da; padding: 10px; border-radius: 5px;">
-                                    <!-- Selected packages will appear here -->
+                                <label for="sendToOpenAI" class="form-label">Ask AI</label>
+                                <button type="button" class="btn btn-secondary" id="sendToOpenAI">Generate Function</button>
+                            </div>
+                            <div class="mb-3">
+                                <div class="input-group">
+                                    <input type="text" class="form-control" id="pipPackageName" placeholder="Package name">
+                                    <button type="button" class="btn btn-primary" id="installPipPackage">Install</button>
                                 </div>
                             </div>
                             <div class="mb-3">
@@ -45,38 +74,20 @@
                                 <div id="functionCodeEditor" style="height: 200px; width: 100%;"></div>
                             </div>
                         </div>
-                        <div class="col-md-4">
+                        <div class="col-md-5 d-flex flex-column">
                             <div class="mb-3">
-                                <label for="openAIChat" class="form-label">Chat with OpenAI</label>
-                                <div id="openAIChat" style="height: 500px; width: 100%; border: 1px solid #ced4da; padding: 10px; border-radius: 5px; overflow-y: auto;">
+                                <div class="d-flex justify-content-between align-items-center mb-3">
+                                    <label for="openAIChat" class="form-label mb-0">Chat with OpenAI</label>
+        
+                                </div>
+                                <div id="openAIChat">
                                     <!-- Chat messages will appear here -->
                                 </div>
                             </div>
-                            <div class="input-group mb-3">
+                            <div class="input-group mt-auto">
                                 <input type="text" class="form-control" id="openAIInput" placeholder="Type your message...">
                                 <button type="button" class="btn btn-primary" id="sendOpenAIMessage">Send</button>
                             </div>
-                        </div>
-                        <div class="col-md-8">
-                            <!-- New Section for Installing Pip Packages -->
-                            <div class="mb-3">
-                                <label for="pipPackageName" class="form-label">Install Pip Package</label>
-                                <div class="input-group">
-                                    <input type="text" class="form-control" id="pipPackageName" placeholder="Package name" required>
-                                    <button type="button" class="btn btn-primary" id="installPipPackage">Install</button>
-                                </div>
-                            </div>   
-                        </div>
-
-                    </div>
-                    <div class="mb-3">
-                        <button type="button" class="btn btn-secondary" id="togglePackagesButton">Select Packages</button>
-                    </div>
-                    <!-- Section for Listing Installed Pip Packages with checkboxes -->
-                    <div class="mb-3" id="packagesContainer" style="display: none;">
-                        <label class="form-label">Installed Packages</label>
-                        <div id="installedPackagesCheckboxes">
-                            <!-- Checkboxes will be populated dynamically -->
                         </div>
                     </div>
                     <button type="submit" class="btn btn-primary">Save Function</button>
@@ -85,6 +96,7 @@
         </div>
     </div>
 </div>
+
 <!-- Functions Modal -->
 <div class="modal fade" id="functionsModal" tabindex="-1" aria-labelledby="functionsModalLabel" aria-hidden="true">
     <div class="modal-dialog">
@@ -325,61 +337,6 @@ function addFunction(appId) {
     const functionPackagesDiv = document.getElementById('functionPackages');
 
   // Fetch and populate installed pip packages with buttons
-  function fetchInstalledPackages() {
-        fetch('/apps/get-installed-packages/')
-            .then(response => response.json())
-            .then(data => {
-                const installedPackagesCheckboxes = document.getElementById('installedPackagesCheckboxes');
-                installedPackagesCheckboxes.innerHTML = '';  // Clear existing buttons
-
-                data.packages.forEach(pkg => {
-                    const button = document.createElement('button');
-                    button.type = 'button';
-                    button.classList.add('btn', 'btn-outline-primary', 'm-1');
-                    button.textContent = pkg;
-
-                    // Add click event to append or remove the package from functionPackagesDiv
-                    button.addEventListener('click', function() {
-                    let currentPackages = functionPackagesDiv.textContent.trim().split(',').map(pkg => pkg.trim()).filter(pkg => pkg);
-                    const pkgIndex = currentPackages.indexOf(pkg);
-
-                    if (pkgIndex === -1) {
-                        // Add package if it's not already in the list
-                        currentPackages.push(pkg);
-                    } else {
-                        // Remove package if it is already in the list
-                        currentPackages.splice(pkgIndex, 1);
-                    }
-
-                    functionPackagesDiv.textContent = currentPackages.join(', ');
-
-                    // Add click event to each package in functionPackagesDiv for removal
-                    functionPackagesDiv.querySelectorAll('span').forEach(pkgSpan => {
-                        pkgSpan.addEventListener('click', function() {
-                            const spanPkg = pkgSpan.textContent.trim();
-                            currentPackages = currentPackages.filter(pkg => pkg !== spanPkg);
-                            functionPackagesDiv.textContent = currentPackages.join(', ');
-                        });
-                    });
-                });
-                    installedPackagesCheckboxes.appendChild(button);
-                });
-            })
-            .catch(error => console.error('Error fetching installed packages:', error));
-    }
-
-    // Toggle the display of the packagesContainer
-    const togglePackagesButton = document.getElementById('togglePackagesButton');
-    const packagesContainer = document.getElementById('packagesContainer');
-
-    togglePackagesButton.addEventListener('click', function() {
-        if (packagesContainer.style.display === 'none') {
-            packagesContainer.style.display = 'block';
-            fetchInstalledPackages();  // Fetch packages when the container is shown
-        } else {
-            packagesContainer.style.display = 'none';
-        }
-    });
 
     // Initialize Ace Editor only once
     if (!editor) {
@@ -950,4 +907,202 @@ function saveModels(appId) {
     })
     .catch(error => console.error('Error:', error));
 }
+let conversationContext = [];  // This will store the entire chat history
+function isCode(response) {
+    // Check for common code block delimiters
+    const codeBlockPatterns = [
+        /```/,                // Markdown code block delimiter
+        /<code>/,             // HTML <code> tag
+        /<pre>/               // HTML <pre> tag
+    ];
+
+    // Check if response contains any of the code block patterns
+    return codeBlockPatterns.some(pattern => pattern.test(response));
+}
+document.getElementById('sendOpenAIMessage').addEventListener('click', function() {
+    const messageInput = document.getElementById('openAIInput');
+    const messageText = messageInput.value.trim();
+    const chatContainer = document.getElementById('openAIChat');
+
+    if (messageText) {
+        // Add the user's message to the conversation context
+        conversationContext.push({ role: 'user', content: messageText });
+
+        // Display the user's message in the chat
+        const userMessage = document.createElement('div');
+        userMessage.textContent = `You: ${messageText}`;
+        userMessage.classList.add('text-primary', 'mb-2');
+        chatContainer.appendChild(userMessage);
+        chatContainer.scrollTop = chatContainer.scrollHeight; // Scroll to bottom
+
+        // Send the conversation context to OpenAI
+        fetch('/open_ai/function-convertion/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCSRFToken()  // Assuming you have a CSRF token function
+            },
+            body: JSON.stringify({ conversation: conversationContext })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.response) {
+                // Add OpenAI's response to the conversation context
+                conversationContext.push({ role: 'assistant', content: data.response });
+
+                // Split the response into text and code blocks
+                const parts = splitResponse(data.response);
+
+                // Create a container for OpenAI's response
+                const aiMessageContainer = document.createElement('div');
+                aiMessageContainer.classList.add('mb-2');
+                chatContainer.appendChild(aiMessageContainer);
+
+                // Display text and code blocks
+                parts.forEach(part => {
+                    if (part.type === 'text') {
+                        const aiTextMessage = document.createElement('div');
+                        aiTextMessage.textContent = `OpenAI: ${part.content}`;
+                        aiTextMessage.classList.add('text-success', 'mb-2');
+                        aiMessageContainer.appendChild(aiTextMessage);
+                    } else if (part.type === 'code') {
+                        // Create and initialize the Ace Editor instance
+                        const editorDiv = document.createElement('div');
+                        editorDiv.style.height = '200px';
+                        editorDiv.style.width = '100%';
+                        editorDiv.classList.add('ace-editor-instance');
+                        
+                        aiMessageContainer.appendChild(editorDiv);
+
+                        // Initialize Ace Editor
+                        const editor = ace.edit(editorDiv);
+                        editor.setTheme('ace/theme/monokai');
+                        editor.session.setMode('ace/mode/javascript');  // Set mode to JavaScript, adjust if needed
+                        editor.setValue(part.content);
+                    }
+                });
+
+                chatContainer.scrollTop = chatContainer.scrollHeight; // Scroll to bottom
+            }
+        })
+        .catch(error => {
+            console.error('Error communicating with OpenAI:', error);
+        });
+
+        // Clear the input field
+        messageInput.value = '';
+    }
+});
+
+// Function to split the response into text and code blocks
+function splitResponse(response) {
+    const codeDelimiter = '```'; // Use your delimiter
+    const parts = [];
+    let lastIndex = 0;
+
+    while (true) {
+        const start = response.indexOf(codeDelimiter, lastIndex);
+        if (start === -1) break;
+
+        // Add text before the code block
+        if (start > lastIndex) {
+            parts.push({ type: 'text', content: response.slice(lastIndex, start).trim() });
+        }
+
+        lastIndex = start + codeDelimiter.length;
+        const end = response.indexOf(codeDelimiter, lastIndex);
+        if (end === -1) break;
+
+        // Add the code block
+        parts.push({ type: 'code', content: response.slice(lastIndex, end).trim() });
+
+        lastIndex = end + codeDelimiter.length;
+    }
+
+    // Add any remaining text after the last code block
+    if (lastIndex < response.length) {
+        parts.push({ type: 'text', content: response.slice(lastIndex).trim() });
+    }
+
+    return parts;
+}
+
+document.getElementById('sendToOpenAI').addEventListener('click', function() {
+    const functionName = document.getElementById('functionName').value.trim();
+    const inputPathPart = document.getElementById('inputPathPart').value.trim();
+    const inputViewPart = document.getElementById('inputViewPart').value.trim();
+    const inputNamePart = document.getElementById('inputNamePart').value.trim();
+    const functionDescription = document.getElementById('functionDescription').value.trim();
+    const chatContainer = document.getElementById('openAIChat');
+
+    // Construct the functionResult string
+    const functionResult = `path('${inputPathPart}/', views.${inputViewPart}, name='${inputNamePart}')`;
+
+    if (functionName && functionDescription) {
+        // Create the prompt
+        const prompt = `Please generate a Python function based on the following details:\n\nFunction Name: ${functionName}\nURL: ${functionResult}\nDescription: ${functionDescription}\n\nOnly provide the Python function code.`;
+
+        // Display the prompt in the chat
+        const userMessage = document.createElement('div');
+        userMessage.textContent = `You: ${prompt}`;
+        userMessage.classList.add('text-primary', 'mb-2');
+        chatContainer.appendChild(userMessage);
+        chatContainer.scrollTop = chatContainer.scrollHeight; // Scroll to bottom
+
+        // Send the prompt to OpenAI
+        fetch('/open_ai/function-chat/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCSRFToken()  // Assuming you have a CSRF token function
+            },
+            body: JSON.stringify({ message: prompt })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.response) {
+                const chatContainer = document.getElementById('openAIChat');
+
+                const parts = splitResponse(data.response);
+                
+                // Create a container for OpenAI's response
+                const aiMessageContainer = document.createElement('div');
+                aiMessageContainer.classList.add('mb-2');
+                chatContainer.appendChild(aiMessageContainer);
+
+                // Display text and code blocks
+                parts.forEach(part => {
+                    if (part.type === 'text') {
+                        const aiTextMessage = document.createElement('div');
+                        aiTextMessage.textContent = `OpenAI: ${part.content}`;
+                        aiTextMessage.classList.add('text-success', 'mb-2');
+                        aiMessageContainer.appendChild(aiTextMessage);
+                    } else if (part.type === 'code') {
+                        // Create and initialize the Ace Editor instance
+                        const editorDiv = document.createElement('div');
+                        editorDiv.style.height = '200px';
+                        editorDiv.style.width = '100%';
+                        editorDiv.classList.add('ace-editor-instance');
+                        
+                        aiMessageContainer.appendChild(editorDiv);
+
+                        // Initialize Ace Editor
+                        const editor = ace.edit(editorDiv);
+                        editor.setTheme('ace/theme/monokai');
+                        editor.session.setMode('ace/mode/javascript');  // Set mode to JavaScript, adjust if needed
+                        editor.setValue(part.content);
+                    }
+                });
+
+                chatContainer.scrollTop = chatContainer.scrollHeight; // Scroll to bottom
+
+            }
+        })
+        .catch(error => {
+            console.error('Error communicating with OpenAI:', error);
+        });
+    } else {
+        alert("Please fill in the function name and description.");
+    }
+});
 </script>

@@ -5,6 +5,7 @@ from django.contrib import admin
 
 
 urlpatterns = [
+    path('open_ai/', include('open_ai.urls')),
     path('emails/', include('emails.urls')),
     path('admin/', admin.site.urls),
     path('apps/', include('app_management.urls')),
