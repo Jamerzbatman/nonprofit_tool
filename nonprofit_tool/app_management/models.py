@@ -30,9 +30,8 @@ class Function(models.Model):
     name = models.CharField(max_length=255)
     code = models.TextField()
     description = models.TextField(blank=True, null=True)
-    parameters = models.CharField(max_length=512, blank=True, null=True)
-    return_type = models.CharField(max_length=255, blank=True, null=True)
     app_relation = models.ForeignKey(App, on_delete=models.CASCADE)
+    url = models.CharField(max_length=255, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

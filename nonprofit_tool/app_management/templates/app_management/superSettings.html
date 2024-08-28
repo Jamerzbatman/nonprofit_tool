@@ -49,7 +49,7 @@ pre {
                         <div class="col-md-6">
                             <div class="mb-3">
                                 <label for="functionName" class="form-label">Function Name</label>
-                                <input type="text" class="form-control" id="functionName" required>
+                                <input type="text" class="form-control" id="functionName" name="name" required>
                             </div>
                             <div class="mb-3">
                                 <label for="functionUrl" class="form-label">URL</label>
@@ -57,11 +57,17 @@ pre {
                             </div>
                             <div class="mb-3">
                                 <label for="functionDescription" class="form-label">Description</label>
-                                <textarea class="form-control" id="functionDescription" rows="3"></textarea>
+                                <textarea class="form-control" id="functionDescription" name="description" rows="3"></textarea>
+                            </div>
+                            <div class="mb-3">
+                                <label for="modelSelector" class="form-label">Select Models to ask ai</label>
+                                <p></p>
+                                <div id="modelButtonContainer" class="d-flex flex-wrap"></div>
                             </div>
                             <div class="mb-3">
                                 <label for="sendToOpenAI" class="form-label">Ask AI</label>
-                                <button type="button" class="btn btn-secondary" id="sendToOpenAI">Generate Function</button>
+                                <p></p>
+                                <button type="button" class="btn btn-secondary" id="generateFromOpenAI">Generate Function</button>
                             </div>
                             <div class="mb-3">
                                 <div class="input-group">
@@ -71,7 +77,7 @@ pre {
                             </div>
                             <div class="mb-3">
                                 <label for="functionCodeEditor" class="form-label">Function Code</label>
-                                <div id="functionCodeEditor" style="height: 200px; width: 100%;"></div>
+                                <div id="functionCodeEditor" style="height: 200px; width: 100%;" name="code" ></div>
                             </div>
                         </div>
                         <div class="col-md-5 d-flex flex-column">
@@ -289,11 +295,52 @@ function loadFunctions(appId) {
     .catch(error => console.error('Error fetching functions:', error));
 }
 
+// Fetch and display models as buttons for selection
+function fetchModels(appId) {
+    fetch(`/apps/get-models/${appId}/`)
+    .then(response => response.json())
+    .then(data => {
+        const modelButtonContainer = document.getElementById('modelButtonContainer');
+        modelButtonContainer.innerHTML = '';  // Clear existing buttons
+
+        if (data.models) {
+            data.models.forEach(model => {
+                const button = document.createElement('button');
+                button.type = 'button';
+                button.className = 'btn btn-outline-primary m-1';  // Default styling for unselected button
+                button.innerText = model;
+                button.value = model;
+
+                // Toggle effect for selection/deselection
+                button.addEventListener('click', function() {
+                    if (button.classList.contains('btn-outline-primary')) {
+                        button.classList.remove('btn-outline-primary');
+                        button.classList.add('btn-primary');  // Change styling to indicate selection
+                        button.setAttribute('data-selected', 'true');  // Mark as selected
+                    } else {
+                        button.classList.remove('btn-primary');
+                        button.classList.add('btn-outline-primary');  // Revert to default styling
+                        button.removeAttribute('data-selected');  // Mark as deselected
+                    }
+                });
+
+                modelButtonContainer.appendChild(button);
+            });
+        } else if (data.error) {
+            console.error(data.error);
+        }
+    })
+    .catch(error => console.error('Error fetching models:', error));
+}
+
 let editor;
 
 function addFunction(appId) {
     const functionsModal = document.getElementById('addFunctionModal');
     const modal = new bootstrap.Modal(functionsModal);
+    const modelSelector = document.getElementById('modelSelector');
+
+    fetchModels(appId);
 
     // Find and remove the existing `functionResult` element
     const functionUrlContainer = document.getElementById('functionResult').closest(".mb-3");
@@ -1026,21 +1073,57 @@ function splitResponse(response) {
 
     return parts;
 }
+function fetchModelDefinitions(AppID) {
+    return fetch(`/apps/get-model-definitions/${AppID}/`, {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.models) {
+            return data.models; 
+            
+        } else {
+            throw new Error(data.error || "Could not fetch models.");
+        }
+    })
+    .catch(error => {
+        console.error("Error fetching models: ", error);
+    });
+}
+// Get selected models from the buttons
+function getSelectedModels() {
+    const selectedButtons = document.querySelectorAll('button[data-selected="true"]');
+    return Array.from(selectedButtons).map(button => button.value);
+}
 
-document.getElementById('sendToOpenAI').addEventListener('click', function() {
+// Generate prompt and send it to OpenAI when user clicks the generate button
+document.getElementById('generateFromOpenAI').addEventListener('click', async function() {
     const functionName = document.getElementById('functionName').value.trim();
     const inputPathPart = document.getElementById('inputPathPart').value.trim();
     const inputViewPart = document.getElementById('inputViewPart').value.trim();
     const inputNamePart = document.getElementById('inputNamePart').value.trim();
     const functionDescription = document.getElementById('functionDescription').value.trim();
+    
+    // Get selected models using button-based selection
+    const selectedModels = getSelectedModels();
+
     const chatContainer = document.getElementById('openAIChat');
 
-    // Construct the functionResult string
+    // Construct the function result string
     const functionResult = `path('${inputPathPart}/', views.${inputViewPart}, name='${inputNamePart}')`;
 
     if (functionName && functionDescription) {
-        // Create the prompt
-        const prompt = `Please generate a Python function based on the following details:\n\nFunction Name: ${functionName}\nURL: ${functionResult}\nDescription: ${functionDescription}\n\nOnly provide the Python function code.`;
+        const prompt = `
+            Please generate a Python function for my Django project based on the following details:
+            
+            Function Name: ${functionName}
+            URL: ${functionResult}
+            Description: ${functionDescription}
+            Models: ${JSON.stringify(selectedModels, null, 2)}
+            
+            Please and thank you.
+        `;
 
         // Display the prompt in the chat
         const userMessage = document.createElement('div');
@@ -1054,23 +1137,20 @@ document.getElementById('sendToOpenAI').addEventListener('click', function() {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'X-CSRFToken': getCSRFToken()  // Assuming you have a CSRF token function
+                'X-CSRFToken': getCSRFToken()
             },
             body: JSON.stringify({ message: prompt })
         })
         .then(response => response.json())
         .then(data => {
             if (data.response) {
-                const chatContainer = document.getElementById('openAIChat');
-
                 const parts = splitResponse(data.response);
-                
-                // Create a container for OpenAI's response
+
                 const aiMessageContainer = document.createElement('div');
                 aiMessageContainer.classList.add('mb-2');
                 chatContainer.appendChild(aiMessageContainer);
 
-                // Display text and code blocks
+                // Display text and code blocks in chat
                 parts.forEach(part => {
                     if (part.type === 'text') {
                         const aiTextMessage = document.createElement('div');
@@ -1078,7 +1158,6 @@ document.getElementById('sendToOpenAI').addEventListener('click', function() {
                         aiTextMessage.classList.add('text-success', 'mb-2');
                         aiMessageContainer.appendChild(aiTextMessage);
                     } else if (part.type === 'code') {
-                        // Create and initialize the Ace Editor instance
                         const editorDiv = document.createElement('div');
                         editorDiv.style.height = '200px';
                         editorDiv.style.width = '100%';
@@ -1086,10 +1165,10 @@ document.getElementById('sendToOpenAI').addEventListener('click', function() {
                         
                         aiMessageContainer.appendChild(editorDiv);
 
-                        // Initialize Ace Editor
+                        // Initialize Ace Editor for code display
                         const editor = ace.edit(editorDiv);
                         editor.setTheme('ace/theme/monokai');
-                        editor.session.setMode('ace/mode/javascript');  // Set mode to JavaScript, adjust if needed
+                        editor.session.setMode('ace/mode/python');  // Assuming Python.
                         editor.setValue(part.content);
                     }
                 });
@@ -1105,4 +1184,66 @@ document.getElementById('sendToOpenAI').addEventListener('click', function() {
         alert("Please fill in the function name and description.");
     }
 });
+
+function submitFunctionForm() {
+    // Prevent default form submission behavior
+    event.preventDefault();
+
+    const formData = new FormData();
+    
+    const inputPathPart = document.getElementById('inputPathPart').value.trim();
+    const inputViewPart = document.getElementById('inputViewPart').value.trim();
+    const inputNamePart = document.getElementById('inputNamePart').value.trim();
+
+
+    // Construct the function result string
+    const functionUrlResult = `path('${inputPathPart}/', views.${inputViewPart}, name='${inputNamePart}')`;
+
+    // Manually append necessary fields to formData
+    formData.append('name', document.getElementById('functionName').value);
+    formData.append('description', document.getElementById('functionDescription').value);
+    formData.append('code', editor.getValue());
+    formData.append('url', functionUrlResult);
+
+    // Send the data via AJAX
+    fetch(`/apps/${currentAppId}/functions/add/`, {  
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': getCSRFToken() // Ensure CSRF token is included
+        },
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Display success message and optionally reset the form
+            alert("Function saved successfully!");
+            document.getElementById('addFunctionForm').reset();
+            $('#addFunctionModal').modal('hide');
+        } else {
+            // Display errors directly within the modal
+            const errorMessages = data.errors || ["An unknown error occurred."];
+            displayErrors(errorMessages);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        displayErrors([error.message]);
+    });
+}
+
+function displayErrors(errors) {
+    const errorContainer = document.createElement('div');
+    errorContainer.className = 'alert alert-danger';
+    errorContainer.innerHTML = errors.map(error => `<p>${error}</p>`).join('');
+    
+    // Clear any previous errors
+    const existingErrors = document.querySelector('.modal-body .alert-danger');
+    if (existingErrors) {
+        existingErrors.remove();
+    }
+
+    // Append the new errors to the modal body
+    document.querySelector('.modal-body').prepend(errorContainer);
+}
 </script>

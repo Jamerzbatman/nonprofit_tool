@@ -4,8 +4,9 @@ from .models import App, Payment, Function
 from .forms import AppForm, AddFunctionForm
 from django.template.loader import render_to_string
 from rest_framework import serializers
+from django.apps import apps
 import sys
-
+import inspect
 import os, json
 import django
 import ast
@@ -279,8 +280,9 @@ def save_class(request, app_id):
 
 
 def add_function(request, app_id):
+    print(app_id)
     app = get_object_or_404(App, pk=app_id)
-    
+    print(app)
     if request.method == 'POST':
         form = AddFunctionForm(request.POST)
         if form.is_valid():
@@ -296,33 +298,13 @@ def add_function(request, app_id):
     else:
         form = AddFunctionForm()
     
-    form_html = render_to_string('functions/add_function.html', {'form': form, 'app': app}, request)
-    return JsonResponse({'success': True, 'form_html': form_html})
 
 
-def edit_function(request, function_id):
-    function = get_object_or_404(Function, pk=function_id)
-    
-    if request.method == 'POST':
-        form = AddFunctionForm(request.POST, instance=function)
-        if form.is_valid():
-            try:
-                form.save()
-                return JsonResponse({'success': True})
-            except Exception as e:
-                return JsonResponse({'success': False, 'error': str(e)}, status=500)
-        else:
-            return JsonResponse({'success': False, 'error': form.errors.as_json()}, status=400)
-    else:
-        form = AddFunctionForm(instance=function)
-
-    form_html = render_to_string('functions/edit_function.html', {'form': form, 'function': function}, request)
-    return JsonResponse({'success': True, 'form_html': form_html})
 
 class FunctionSerializer(serializers.ModelSerializer):
     class Meta:
         model = Function
-        fields = ['id', 'name', 'description', 'parameters', 'return_type', 'code']
+        fields = ['id', 'name', 'description', 'code']
 
 def manage_functions(request, app_id):
     app = get_object_or_404(App, pk=app_id)
@@ -350,12 +332,33 @@ def install_pip_package(request):
             return JsonResponse({'success': False, 'error': str(e)})
 
     return JsonResponse({'success': False, 'error': 'Invalid request method'})
+    
 
-def get_installed_packages(request):
+def list_models_for_app(request, app_id):
     try:
-        result = subprocess.run([sys.executable, "-m", "pip", "freeze"], stdout=subprocess.PIPE, text=True)
-        packages = result.stdout.splitlines()
-        packages = [pkg.split('==')[0] for pkg in packages]  # Extract package names
-        return JsonResponse({'success': True, 'packages': packages})
-    except subprocess.CalledProcessError as e:
-        return JsonResponse({'success': False, 'error': str(e)})
+        app = get_object_or_404(App, pk=app_id)
+        app_models = apps.get_app_config(app.name).get_models()  # Get models using app_label
+        
+        model_names = [model.__name__ for model in app_models]
+        return JsonResponse({'models': model_names})
+        
+    except LookupError:
+        return JsonResponse({'error': f'App with label `{app.name}` not found.'}, status=404)
+    
+def get_model_definitions(request, app_id):
+    try:
+        app = get_object_or_404(App, pk=app_id)
+        app_models = apps.get_app_config(app.name).get_models()
+
+        models = {}
+        for model in app_models:
+            source_code = inspect.getsource(model)
+            print(source_code)
+            models[model.__name__] = source_code
+
+        return JsonResponse({'models': models})
+    
+    except LookupError:
+        return JsonResponse({'error': f'App label {app.name} not found.'}, status=404)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)

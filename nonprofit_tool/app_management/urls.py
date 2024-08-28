@@ -12,8 +12,8 @@ urlpatterns = [
     path('<int:app_id>/save_models/', views.save_model_details, name='save_models'),
     path('<int:app_id>/functions/', views.manage_functions, name='manage_functions'),
     path('<int:app_id>/functions/add/', views.add_function, name='add_function'),
-    path('functions/<int:function_id>/edit/', views.edit_function, name='edit_function'),
     path('install-pip-package/', views.install_pip_package, name='install_pip_package'),
-    path('get-installed-packages/', views.get_installed_packages, name='get_installed_packages'),
+    path('get-models/<str:app_id>/', views.list_models_for_app, name='get_models_for_app'),
+    path('get-model-definitions/<int:app_id>/', views.get_model_definitions, name='get_model_definitions'),
 
 ]
