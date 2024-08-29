@@ -70,3 +70,13 @@ class FunctionVersion(models.Model):
 
     def __str__(self):
         return f'{self.function.name} - v{self.version}'
+    
+class ErrorLog(models.Model):
+    timestamp = models.DateTimeField(auto_now_add=True)
+    app_relation = models.ForeignKey(App, on_delete=models.CASCADE)
+    function_relation = models.ForeignKey(Function, on_delete=models.CASCADE)
+    error_message = models.TextField()
+    stack_trace = models.TextField(blank=True, null=True)
+
+    def __str__(self):
+        return f"{self.app_name} - {self.function_name} - {self.timestamp}"

@@ -14,8 +14,7 @@ import subprocess
 import traceback
 from django.conf import settings
 from django.http import JsonResponse
-
-
+from app_management.utils import log_error
 
 def format_app_name(app_name):
     # Replace underscores with spaces and capitalize each word
@@ -280,9 +279,7 @@ def save_class(request, app_id):
 
 
 def add_function(request, app_id):
-    print(app_id)
     app = get_object_or_404(App, pk=app_id)
-    print(app)
     if request.method == 'POST':
         form = AddFunctionForm(request.POST)
         if form.is_valid():
@@ -353,7 +350,6 @@ def get_model_definitions(request, app_id):
         models = {}
         for model in app_models:
             source_code = inspect.getsource(model)
-            print(source_code)
             models[model.__name__] = source_code
 
         return JsonResponse({'models': models})
