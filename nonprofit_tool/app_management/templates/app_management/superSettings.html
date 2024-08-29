@@ -36,12 +36,15 @@ pre {
     Add App
 </button>
 
+
+
+<!-- addFunctionModal -->
 <div class="modal fade" id="addFunctionModal" tabindex="-1" aria-labelledby="addFunctionModalLabel-${app.id}" aria-hidden="true">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="addFunctionModalLabel">Add Function for App</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                <button type="button" class="btn-close" onclick="hideModal('#addFunctionModal')" aria-label="Close"></button>
             </div>
             <div class="modal-body">
                 <form id="addFunctionForm" onsubmit="submitFunctionForm(); return false;">
@@ -53,7 +56,7 @@ pre {
                             </div>
                             <div class="mb-3">
                                 <label for="functionUrl" class="form-label">URL</label>
-                                <input type="text" class="form-control" id="functionResult" readonly>
+                                <input type="text" class="form-control" id="functionURLResult" readonly>
                             </div>
                             <div class="mb-3">
                                 <label for="functionDescription" class="form-label">Description</label>
@@ -109,7 +112,7 @@ pre {
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="functionsModalLabel">Functions for App</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                <button type="button" class="btn-close" onclick="hideModal('#functionsModal')" aria-label="Close"></button>
             </div>
             <div class="modal-body">
                 <div id="functionList"></div>
@@ -265,7 +268,6 @@ function loadFunctions(appId) {
     fetch(`/apps/${appId}/functions/`)
         .then(response => response.json())
         .then(data => {
-            // Correct Element ID based on the specific app ID
             const functionsModal = document.getElementById(`functionsModal`);
             const modal = new bootstrap.Modal(functionsModal); 
             const functionList = document.getElementById(`functionList`);
@@ -273,13 +275,18 @@ function loadFunctions(appId) {
                 functionList.innerHTML = ''; // Clear existing content
                 
                 if (data.success && data.functions.length > 0) {
-                    const listHTML = data.functions.map(func => `
-                        <div class="function-item">
-                            <h6>${func.name}</h6>
-                            <p>${func.description}</p>
-                            <button class="btn btn-sm btn-secondary" onclick="editFunction(${func.id})">Edit</button>
-                        </div>
+                    let listHTML = data.functions.map(func => `
+                        <button class="btn btn-outline-secondary btn-block mb-2 text-start function-item" onclick="editFunction(${func.id})">
+                            <h6 class="mb-1">${func.name}</h6>
+                            <p class="mb-0">${func.description}</p>
+                        </button>
                     `).join('');
+
+                    // Add the "Add a Function" button under the list
+                    listHTML += `
+                        <button class="btn btn-primary mt-3" onclick="addFunction(${appId})">Add a Function</button>
+                    `;
+
                     functionList.innerHTML = listHTML;
                 } else {
                     functionList.innerHTML = `
@@ -291,8 +298,8 @@ function loadFunctions(appId) {
                 console.error(`Element with id="functionList-${appId}" does not exist in the DOM.`);
             }
             modal.show();
-    })
-    .catch(error => console.error('Error fetching functions:', error));
+        })
+        .catch(error => console.error('Error fetching functions:', error));
 }
 
 // Fetch and display models as buttons for selection
@@ -342,9 +349,10 @@ function addFunction(appId) {
 
     fetchModels(appId);
 
-    // Find and remove the existing `functionResult` element
-    const functionUrlContainer = document.getElementById('functionResult').closest(".mb-3");
-    if (functionUrlContainer) {
+    // Find and remove the existing `functionURLResult` element
+    const functionUrlElement = document.getElementById('functionURLResult');
+    if (functionUrlElement) {
+        const functionUrlContainer = functionUrlElement.closest(".mb-3");
         functionUrlContainer.innerHTML = `
             <label for="inputPathPart" class="form-label">Path:</label>
             <div class="form-inline mb-3">
@@ -426,6 +434,8 @@ function addFunction(appId) {
     modal.show();
     hideModal(`#functionsModal`);
 }
+
+
 document.getElementById('addAppForm').addEventListener('submit', function(e) {
     e.preventDefault();
     
@@ -1073,23 +1083,33 @@ function splitResponse(response) {
 
     return parts;
 }
-function fetchModelDefinitions(AppID) {
-    return fetch(`/apps/get-model-definitions/${AppID}/`, {
-        method: 'GET',
-        headers: { 'Content-Type': 'application/json' }
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.models) {
-            return data.models; 
-            
+async function getModelDefinitions(appId, selectedModels) {
+    try {
+        const response = await fetch(`/apps/get-model-definitions/${appId}/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCSRFToken()  // Ensure you include CSRF token if needed
+            },
+            body: JSON.stringify({ models: selectedModels })
+        });
+
+        if (response.ok) {
+            const data = await response.json();
+            if (data.models) {
+                return data.models;
+            } else {
+                console.error('Error fetching model definitions:', data.error);
+                return null;
+            }
         } else {
-            throw new Error(data.error || "Could not fetch models.");
+            console.error('Error fetching model definitions:', response.statusText);
+            return null;
         }
-    })
-    .catch(error => {
-        console.error("Error fetching models: ", error);
-    });
+    } catch (error) {
+        console.error('Error during fetch:', error);
+        return null;
+    }
 }
 // Get selected models from the buttons
 function getSelectedModels() {
@@ -1107,30 +1127,33 @@ document.getElementById('generateFromOpenAI').addEventListener('click', async fu
     
     // Get selected models using button-based selection
     const selectedModels = getSelectedModels();
+    const appId = currentAppId;
 
-    const chatContainer = document.getElementById('openAIChat');
+    // Fetch model definitions
+    const modelDefinitions = await getModelDefinitions(appId, selectedModels);
+    
+    if (functionName && functionDescription && modelDefinitions) {
+        const functionURLResult = `path('${inputPathPart}/', views.${inputViewPart}, name='${inputNamePart}')`;
 
-    // Construct the function result string
-    const functionResult = `path('${inputPathPart}/', views.${inputViewPart}, name='${inputNamePart}')`;
-
-    if (functionName && functionDescription) {
         const prompt = `
             Please generate a Python function for my Django project based on the following details:
             
             Function Name: ${functionName}
-            URL: ${functionResult}
+            URL: ${functionURLResult}
             Description: ${functionDescription}
-            Models: ${JSON.stringify(selectedModels, null, 2)}
+            Models: ${JSON.stringify(modelDefinitions, null, 2)}
             
             Please and thank you.
         `;
+
+        const chatContainer = document.getElementById('openAIChat');
 
         // Display the prompt in the chat
         const userMessage = document.createElement('div');
         userMessage.textContent = `You: ${prompt}`;
         userMessage.classList.add('text-primary', 'mb-2');
         chatContainer.appendChild(userMessage);
-        chatContainer.scrollTop = chatContainer.scrollHeight; // Scroll to bottom
+        chatContainer.scrollTop = chatContainer.scrollHeight;
 
         // Send the prompt to OpenAI
         fetch('/open_ai/function-chat/', {
@@ -1150,7 +1173,6 @@ document.getElementById('generateFromOpenAI').addEventListener('click', async fu
                 aiMessageContainer.classList.add('mb-2');
                 chatContainer.appendChild(aiMessageContainer);
 
-                // Display text and code blocks in chat
                 parts.forEach(part => {
                     if (part.type === 'text') {
                         const aiTextMessage = document.createElement('div');
@@ -1165,15 +1187,14 @@ document.getElementById('generateFromOpenAI').addEventListener('click', async fu
                         
                         aiMessageContainer.appendChild(editorDiv);
 
-                        // Initialize Ace Editor for code display
                         const editor = ace.edit(editorDiv);
                         editor.setTheme('ace/theme/monokai');
-                        editor.session.setMode('ace/mode/python');  // Assuming Python.
+                        editor.session.setMode('ace/mode/python');
                         editor.setValue(part.content);
                     }
                 });
 
-                chatContainer.scrollTop = chatContainer.scrollHeight; // Scroll to bottom
+                chatContainer.scrollTop = chatContainer.scrollHeight;
 
             }
         })
@@ -1216,10 +1237,10 @@ function submitFunctionForm() {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            // Display success message and optionally reset the form
-            alert("Function saved successfully!");
+            alertMessage('Function saved successfully!', 'alert alert-success');
             document.getElementById('addFunctionForm').reset();
-            $('#addFunctionModal').modal('hide');
+            hideModal('#addFunctionModal')
+            loadFunctions(currentAppId)
         } else {
             // Display errors directly within the modal
             const errorMessages = data.errors || ["An unknown error occurred."];
