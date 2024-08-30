@@ -294,9 +294,34 @@ def add_function(request, app_id):
                 function.app_relation = app
                 function.save()
 
+                # Read the current contents of the file
+                with open(views_path, 'r') as file:
+                    existing_lines = file.readlines()
+                
+                # Create a set of existing imports
+                existing_imports = set(line.strip() for line in existing_lines if line.strip().startswith('import') or line.strip().startswith('from'))
+
+                # Create a list to hold new imports
+                new_imports = []
+                
+                # Check each package and add it if it's not already present
+                for package in ast.literal_eval(request.POST.get('packages')):
+                    if package.strip() not in existing_imports:
+                        new_imports.append(package.strip())
+                
+                # If there are new imports, prepend them to the file
+                if new_imports:
+                    with open(views_path, 'w') as file:
+                        # Write the new imports at the top
+                        for import_line in new_imports:
+                            file.write(import_line + '\n')
+                        
+                        # Write the original content after the new imports
+                        file.writelines(existing_lines)
+
+                        
                 with open(views_path, 'a') as file:
                     file.write("\n\n" + request.POST.get('code'))
-
 
                 with open(urls_path, 'r') as f:
                     urls_content = f.readlines()
@@ -305,17 +330,14 @@ def add_function(request, app_id):
                 url_pattern_added = False
     
                 for line in urls_content:
-                    print(line)
                     updated_content.append(line)
                     if line.strip().startswith('urlpatterns = ['):
                         # Insert the new URL pattern after 'urlpatterns = ['
                         updated_content.append(f"    {request.POST.get('url')},\n")
                         url_pattern_added = True
 
-                
                 with open(urls_path, 'w') as file:
                     file.writelines(updated_content)
-
 
                 return JsonResponse({'success': True})
             except Exception as e:
@@ -355,7 +377,6 @@ def install_pip_package(request):
     if request.method == 'POST':
         data = json.loads(request.body)
         package_name = data.get('package_name')
-        print(package_name)
         # Extract the actual module name (e.g., from 'import os' to 'os')
         package_name = extract_module_name(package_name)
 

@@ -363,7 +363,6 @@ function addFunction(appId) {
     const aiSection = document.getElementById('aiSection');
     const pathParameterInput = document.getElementById('pathParameter');
     const pathParameterLinks = document.getElementById('pathParameterLinks');
-    
     // Function to clear all modal content
     function clearModalContent() {
         // Clear input fields
@@ -395,6 +394,12 @@ function addFunction(appId) {
         }
     }
     functionsModal.addEventListener('hidden.bs.modal', clearModalContent);
+    clearModalContent();
+    const listPackagesDiv = document.getElementById('list_packages');
+    const packageItem = document.createElement('div');
+    listPackagesDiv.innerHTML = '';
+    packageItem.textContent = 'from app_management.utils import log_error';
+    listPackagesDiv.appendChild(packageItem);
 
     toggleButton.addEventListener('click', function() {
         if (aiSection.style.display === 'none' || aiSection.style.display === '') {
@@ -430,8 +435,6 @@ function addFunction(appId) {
             const urlSanitizedValue = functionNameInput.value.trim().toLowerCase().replace(/\s+/g, '-');
             editor.setValue(
     `
-from app_management.utils import log_error
-
 def ${sanitizedValue}(request):
     try:
         # Code goes here...
