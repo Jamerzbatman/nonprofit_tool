@@ -28,6 +28,7 @@ class Payment(models.Model):
 
 class Function(models.Model):
     name = models.CharField(max_length=255)
+    packages = models.TextField(blank=True, null=True)
     code = models.TextField()
     description = models.TextField(blank=True, null=True)
     app_relation = models.ForeignKey(App, on_delete=models.CASCADE)

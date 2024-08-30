@@ -17,7 +17,7 @@ PaymentFormSet = inlineformset_factory(App, Payment, form=PaymentForm, extra=1, 
 class AddFunctionForm(forms.ModelForm):
     class Meta:
         model = Function
-        fields = ['name', 'description', 'code', 'url']
+        fields = ['name', 'description','packages',  'code', 'url']
         help_texts = {
             'name': 'Enter the name of the function.',
             'description': 'A brief description of what the function does.',

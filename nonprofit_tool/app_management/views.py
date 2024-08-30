@@ -6,12 +6,14 @@ from django.template.loader import render_to_string
 from rest_framework import serializers
 from django.apps import apps
 import sys
+import re
 import inspect
 import os, json
 import django
 import ast
 import subprocess
 import traceback
+import importlib.util
 from django.conf import settings
 from django.http import JsonResponse
 from app_management.utils import log_error
@@ -280,6 +282,10 @@ def save_class(request, app_id):
 
 def add_function(request, app_id):
     app = get_object_or_404(App, pk=app_id)
+    app_label = app.name.lower()
+    views_path = os.path.join(settings.BASE_DIR, app_label, 'views.py')
+    urls_path = os.path.join(settings.BASE_DIR, app_label, 'urls.py')
+
     if request.method == 'POST':
         form = AddFunctionForm(request.POST)
         if form.is_valid():
@@ -287,13 +293,35 @@ def add_function(request, app_id):
                 function = form.save(commit=False)
                 function.app_relation = app
                 function.save()
+
+                with open(views_path, 'a') as file:
+                    file.write("\n\n" + request.POST.get('code'))
+
+
+                with open(urls_path, 'r') as f:
+                    urls_content = f.readlines()
+
+                updated_content = []
+                url_pattern_added = False
+    
+                for line in urls_content:
+                    print(line)
+                    updated_content.append(line)
+                    if line.strip().startswith('urlpatterns = ['):
+                        # Insert the new URL pattern after 'urlpatterns = ['
+                        updated_content.append(f"    {request.POST.get('url')},\n")
+                        url_pattern_added = True
+
+                
+                with open(urls_path, 'w') as file:
+                    file.writelines(updated_content)
+
+
                 return JsonResponse({'success': True})
             except Exception as e:
                 return JsonResponse({'success': False, 'error': str(e)}, status=500)
         else:
             return JsonResponse({'success': False, 'error': form.errors.as_json()}, status=400)
-    else:
-        form = AddFunctionForm()
     
 
 
@@ -310,11 +338,30 @@ def manage_functions(request, app_id):
     functions_data = FunctionSerializer(functions, many=True).data
     
     return JsonResponse({'success': True, 'functions': functions_data})
+def extract_module_name(import_statement):
+    """
+    Extracts the module name from an import statement.
+    For example, 'from django.conf import settings' returns 'django.conf'.
+    """
+    if import_statement.startswith("from"):
+        parts = import_statement.split()
+        return parts[1]
+    elif import_statement.startswith("import"):
+        parts = import_statement.split()
+        return parts[1].split('.')[0]  # Only take the first part if importing like `import os.path`
+    return None
 
 def install_pip_package(request):
     if request.method == 'POST':
         data = json.loads(request.body)
         package_name = data.get('package_name')
+        print(package_name)
+        # Extract the actual module name (e.g., from 'import os' to 'os')
+        package_name = extract_module_name(package_name)
+
+        # Check if the package is part of the standard library
+        if importlib.util.find_spec(package_name) is not None:
+            return JsonResponse({'success': True, 'package': package_name})
 
         try:
             subprocess.check_call([sys.executable, "-m", "pip", "install", package_name])
@@ -323,13 +370,12 @@ def install_pip_package(request):
             with open(requirements_path, 'w') as f:
                 subprocess.check_call([sys.executable, "-m", "pip", "freeze"], stdout=f)  
             
-            return JsonResponse({'success': True})
+            return JsonResponse({'success': True, 'package': package_name})
         
         except subprocess.CalledProcessError as e:
             return JsonResponse({'success': False, 'error': str(e)})
 
     return JsonResponse({'success': False, 'error': 'Invalid request method'})
-    
 
 def list_models_for_app(request, app_id):
     try:

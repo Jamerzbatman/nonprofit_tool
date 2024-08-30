@@ -59,9 +59,9 @@ pre {
                             </div>
                             <div class="mb-3">
                             <div id="pathParameterLinks">
-                                <a href="#" class="path-param-link" data-param="<int:name_of_int>">Integer ID</a>
-                                <a href="#" class="path-param-link" data-param="<str:slug>">Slug</a>
-                                <a href="#" class="path-param-link" data-param="<uuid:uuid>">UUID</a>
+                                <a href="#" class="path-param-link" data-param="<int:">Integer ID</a>
+                                <a href="#" class="path-param-link" data-param="<str:">String (Slug)</a>
+                                <a href="#" class="path-param-link" data-param="<uuid:">UUID</a>
                             </div>
 
                             </div>
@@ -88,6 +88,7 @@ pre {
                                     <input type="text" class="form-control" id="pipPackageName" placeholder="Package name">
                                     <button type="button" class="btn btn-primary" id="installPipPackage">Install</button>
                                 </div>
+                                <div id="list_packages"></div>
                             </div>
                             <div class="mb-3">
                                 <label for="functionCodeEditor" class="form-label">Function Code</label>
@@ -352,6 +353,7 @@ function fetchModels(appId) {
 }
 
 let editor;
+let installPipButtonClicked = false;  // Flag to track if the button's event listener is added
 
 function addFunction(appId) {
     const functionsModal = document.getElementById('addFunctionModal');
@@ -361,6 +363,38 @@ function addFunction(appId) {
     const aiSection = document.getElementById('aiSection');
     const pathParameterInput = document.getElementById('pathParameter');
     const pathParameterLinks = document.getElementById('pathParameterLinks');
+    
+    // Function to clear all modal content
+    function clearModalContent() {
+        // Clear input fields
+        const functionNameInput = document.getElementById('functionName');
+        const functionDescriptionInput = document.getElementById('functionDescription');
+        const pipPackageNameInput = document.getElementById('pipPackageName');
+        const inputPathPart = document.getElementById('inputPathPart');
+        const inputViewPart = document.getElementById('inputViewPart');
+        const inputNamePart = document.getElementById('inputNamePart');
+        
+        if (functionNameInput) functionNameInput.value = '';
+        if (functionDescriptionInput) functionDescriptionInput.value = '';
+        if (pipPackageNameInput) pipPackageNameInput.value = '';
+        if (inputPathPart) inputPathPart.textContent = '';
+        if (inputViewPart) inputViewPart.textContent = '';
+        if (inputNamePart) inputNamePart.textContent = '';
+
+        // Clear the list_packages div
+        const listPackagesDiv = document.getElementById('list_packages');
+        if (listPackagesDiv) listPackagesDiv.innerHTML = '';
+
+        const editorElement = document.getElementById("functionCodeEditor");
+        if (editor) {
+            editor.setValue('');
+        } else {
+            editor = ace.edit(editorElement);
+            editor.setTheme("ace/theme/monokai");
+            editor.session.setMode("ace/mode/python");
+        }
+    }
+    functionsModal.addEventListener('hidden.bs.modal', clearModalContent);
 
     toggleButton.addEventListener('click', function() {
         if (aiSection.style.display === 'none' || aiSection.style.display === '') {
@@ -406,8 +440,6 @@ def ${sanitizedValue}(request):
 `
 );
             document.getElementById('inputPathPart').textContent = urlSanitizedValue;
-
-
             document.getElementById('inputViewPart').textContent = sanitizedValue;
             document.getElementById('inputNamePart').textContent = sanitizedValue;
 
@@ -418,11 +450,13 @@ def ${sanitizedValue}(request):
             if (event.target.classList.contains('path-param-link')) {
                 event.preventDefault();  // Prevent default link behavior
                 const parameter = event.target.getAttribute('data-param');
-                const currentPath = inputPathPart.textContent;
-                inputPathPart.textContent = `${currentPath}/${parameter}`;
+                const paramName = prompt("Enter a name for the parameter (e.g., 'id', 'slug'):");
+                if (paramName) {
+                    const currentPath = inputPathPart.textContent;
+                    inputPathPart.textContent = `${currentPath}/${parameter}${paramName}>`;
+                }
             }
         });
-
         inputViewPart.addEventListener('input', function() {
             const sanitizedFunctionName = inputViewPart.value.trim().toLowerCase().replace(/\s+/g, '_');
             editor.setValue(`def ${sanitizedFunctionName}(request):\n    # Code goes here...\n`);
@@ -433,7 +467,6 @@ def ${sanitizedValue}(request):
     // Define functionPackagesDiv to avoid the reference error
     const functionPackagesDiv = document.getElementById('functionPackages');
 
-
     // Initialize Ace Editor only once
     if (!editor) {
         const editorElement = document.getElementById("functionCodeEditor");
@@ -441,36 +474,59 @@ def ${sanitizedValue}(request):
         editor.setTheme("ace/theme/monokai");
         editor.session.setMode("ace/mode/python"); 
     }
+
     // Handle Pip Package Installation
     const installPipButton = document.getElementById('installPipPackage');
     const pipPackageNameInput = document.getElementById('pipPackageName');
 
-    installPipButton.addEventListener('click', function() {
-        const packageName = pipPackageNameInput.value.trim();
-        if (packageName) {
-            fetch('/apps/install-pip-package/', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': getCSRFToken()  // Assumes you have a function to get the CSRF token
-                },
-                body: JSON.stringify({ package_name: packageName })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    pipPackageName.value = `Package ${packageName} installed successfully!`;
-                    alertMessage(`Package ${packageName} installed successfully!`, 'alert alert-success');
-                    setTimeout(function() {
-                        pipPackageName.value = ``;
-                    }, 3000);
-                } else {
-                    alertMessage(`Failed to install package: ${data.error}`, 'alert alert-danger');
-                }
-            })
-            .catch(error => console.error('Error installing package:', error));
-        }
-    });
+    // Add event listener only if not already added
+    if (!installPipButtonClicked) {
+        installPipButton.addEventListener('click', function() {
+            const packageName = pipPackageNameInput.value.trim();
+
+            // Check if the package name is provided
+            if (packageName) {
+                // Disable the button to prevent multiple clicks
+                installPipButton.disabled = true;
+
+                fetch('/apps/install-pip-package/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCSRFToken()  // Assumes you have a function to get the CSRF token
+                    },
+                    body: JSON.stringify({ package_name: packageName })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        pipPackageNameInput.value = `Package ${packageName} installed successfully!`;
+                        alertMessage(`Package ${packageName} installed successfully!`, 'alert alert-success');
+
+                        // Update the list_packages div with the newly installed package
+                        const listPackagesDiv = document.getElementById('list_packages');
+                        const packageItem = document.createElement('div');
+                        packageItem.textContent = packageName;
+                        listPackagesDiv.appendChild(packageItem);
+
+                        // Clear the input field after 3 seconds
+                        setTimeout(function() {
+                            pipPackageNameInput.value = ``;
+                        }, 3000);
+                    } else {
+                        alert(`Failed to install package: ${data.error}`);
+                        alertMessage(`Failed to install package: ${data.error}`, 'alert alert-danger');
+                    }
+                })
+                .catch(error => console.error('Error installing package:', error))
+                .finally(() => {
+                    // Re-enable the button after the operation is complete
+                    installPipButton.disabled = false;
+                });
+            }
+        });
+        installPipButtonClicked = true; // Update flag after adding listener
+    }
 
     modal.show();
     hideModal(`#functionsModal`);
@@ -1250,13 +1306,24 @@ document.getElementById('generateFromOpenAI').addEventListener('click', async fu
 function submitFunctionForm() {
     // Prevent default form submission behavior
     event.preventDefault();
-
+    
+    // Function to get the list of package names from the div
+    function getInstalledPackages() {
+        const listPackagesDiv = document.getElementById('list_packages');
+        const packageItems = listPackagesDiv ? listPackagesDiv.getElementsByTagName('div') : [];
+        const packages = Array.from(packageItems).map(item => item.textContent.trim());
+        return packages;
+    }
     const formData = new FormData();
     
-    const inputPathPart = document.getElementById('inputPathPart').value.trim();
-    const inputViewPart = document.getElementById('inputViewPart').value.trim();
-    const inputNamePart = document.getElementById('inputNamePart').value.trim();
+    // Get elements with safety checks
+    const inputPathPartElement = document.getElementById('inputPathPart');
+    const inputViewPartElement = document.getElementById('inputViewPart');
+    const inputNamePartElement = document.getElementById('inputNamePart');
 
+    const inputPathPart = inputPathPartElement ? inputPathPartElement.textContent.trim() : '';
+    const inputViewPart = inputViewPartElement ? inputViewPartElement.textContent.trim() : '';
+    const inputNamePart = inputNamePartElement ? inputNamePartElement.textContent.trim() : '';
 
     // Construct the function result string
     const functionUrlResult = `path('${inputPathPart}/', views.${inputViewPart}, name='${inputNamePart}')`;
@@ -1266,6 +1333,7 @@ function submitFunctionForm() {
     formData.append('description', document.getElementById('functionDescription').value);
     formData.append('code', editor.getValue());
     formData.append('url', functionUrlResult);
+    formData.append('packages', JSON.stringify(getInstalledPackages()));
 
     // Send the data via AJAX
     fetch(`/apps/${currentAppId}/functions/add/`, {  
@@ -1293,6 +1361,7 @@ function submitFunctionForm() {
         displayErrors([error.message]);
     });
 }
+
 
 function displayErrors(errors) {
     const errorContainer = document.createElement('div');

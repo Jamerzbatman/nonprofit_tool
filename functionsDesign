@@ -1,13 +1,3 @@
-1. Design the Function Management Interface
-Dashboard Overview: Start with a central dashboard that lists all the apps. Each app box can have a button labeled "Manage Functions."
-Function Listing: Clicking "Manage Functions" will bring up a page or modal that lists all existing functions for that app, displayed by their names.
-2. Function Storage and Metadata
-Database Schema: Create a model called Function that stores function names, their code (as text), and associated metadata (like description, parameters, and usage).
-Fields: name, code, description, parameters, return_type, and app_relation (ForeignKey to the App model).
-Editable Fields: Ensure the model can handle the addition of new fields if you want to expand the types of metadata stored.
-3. Adding a New Function
-UI for Adding Functions: Include a button or link for "Add New Function" on the function listing page/modal. Clicking this should open a form where users can input the function name, description, parameters, and the actual code.
-Code Editor Integration: Use a code editor widget within the form for inputting the function code. Options include CodeMirror or Ace Editor, which provide syntax highlighting and basic error checking.
 4. Displaying and Editing Functions
 View/Edit Function: When a function name is clicked, display a detailed view of the function, showing its code, metadata, and usage instructions.
 Edit Mode: Provide an "Edit" button that turns the display into a form, allowing users to modify the function code or metadata. Save changes back to the database.
