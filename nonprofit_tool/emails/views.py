@@ -12,3 +12,11 @@ def testing_this_awesome_function(request):
         print("hotdog")
     except Exception as e:
         log_error('5', 'testing_this_awesome_function', str(e))
+
+
+
+def new(request):
+    try:
+        print("hotdog")
+    except Exception as e:
+        log_error('5', 'new', str(e))

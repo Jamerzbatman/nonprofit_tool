@@ -5,6 +5,27 @@
     margin: 1.75rem auto;
 }
 
+.keyword {
+    color: yellow;
+}
+.readonly {
+    color: #ccc; /* Gray or any color to indicate it's read-only */
+    font-style: italic;
+}
+.views {
+    color: green;
+}
+
+.name {
+    color: lightblue;
+}
+
+.quote {
+    color: burlywood;
+}
+.parenthesis {
+    color: red;
+}
 
 .col-md-4 {
     display: flex;
@@ -117,7 +138,42 @@ pre {
         </div>
     </div>
 </div>
-
+<!-- Edit Functions Modal -->
+<div class="modal fade" id="editFunctionModal" tabindex="-1" role="dialog" aria-labelledby="editFunctionModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="editFunctionModalLabel">Edit Function</h5>
+          <button type="button" class="btn-close" onclick="editFunctionCloseButton()" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <form id="editFunctionForm">
+            {% csrf_token %}
+            <input type="hidden" id="editFunctionId" name="function_id">
+            <div class="form-group">
+              <p id="editFunctionName" class="form-control-plaintext" style="color: white;"></p>
+            </div>
+            <div class="form-group">
+                <p id="editFunctionUrl"></p>
+            </div>
+              <div class="form-group">
+              <label for="functionCode">Code</label>
+              <!-- This div will be converted into the Ace editor -->
+              <div id="editFunctionCodeEditor" style="height: 300px; width: 100%;"></div>
+            </div>
+            <div class="form-group">
+              <label for="functionDescription">Description</label>
+              <textarea class="form-control" id="editFunctionDescription" name="description" rows="3"></textarea>
+            </div>
+            <!-- Add other fields as needed -->
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-primary" onclick="submitEditFunctionForm()">Save changes</button>
+        </div>
+      </div>
+    </div>
+  </div>
 <!-- Functions Modal -->
 <div class="modal fade" id="functionsModal" tabindex="-1" aria-labelledby="functionsModalLabel" aria-hidden="true">
     <div class="modal-dialog">
@@ -354,6 +410,7 @@ function fetchModels(appId) {
 
 let editor;
 let installPipButtonClicked = false;  // Flag to track if the button's event listener is added
+let isReadOnly = false;
 
 function addFunction(appId) {
     const functionsModal = document.getElementById('addFunctionModal');
@@ -1363,6 +1420,105 @@ function submitFunctionForm() {
         console.error('Error:', error);
         displayErrors([error.message]);
     });
+}
+
+function formatUrl(url) {
+    // Style "path" with yellow
+    url = url.replace(/^path/, `<span class="keyword">path</span>`);
+
+    // Style the word after "views." with yellow
+    url = url.replace(/views\.(\w+)/, `views.<span class="keyword">$1</span>`);
+
+    // Style the word "views" with green
+    url = url.replace(/views/g, `<span class="views">views</span>`);
+
+    // Style the word "name" with blue
+    url = url.replace(/name/g, `<span class="name">name</span>`);
+
+    // Style text inside single quotes with brown
+    url = url.replace(/'([^']*)'/g, `<span class="quote">'$1'</span>`);
+
+    // Style parentheses with purple
+    url = url.replace(/\(/g, `<span style="parenthesis">(</span>`);
+    url = url.replace(/\)/g, `<span class="parenthesis">)</span>`);
+
+    return url;
+}
+
+function editFunctionCloseButton() {
+    hideModal(`#editFunctionModal`);
+    loadFunctions(currentAppId);
+}
+
+function editFunction(id) {
+    // Use AJAX to get the data for the function
+    fetch(`/apps/function/${id}/json/`)
+        .then(response => response.json())
+        .then(data => {
+            // Populate the text element and other form fields with the data
+            document.getElementById('editFunctionId').value = data.id;
+            document.getElementById('editFunctionName').textContent = data.name;
+            document.getElementById('editFunctionUrl').innerHTML = formatUrl(data.url);
+
+            // Initialize Ace Editor if it hasn't been initialized yet
+            if (!editor) {
+                const editorElement = document.getElementById("editFunctionCodeEditor");
+                editor = ace.edit(editorElement);
+                editor.setTheme("ace/theme/monokai");
+                editor.session.setMode("ace/mode/python");
+
+                // Handle changes to enforce read-only behavior for the first line
+                editor.selection.on('changeCursor', function(e) {
+                    if (editor.selection.getCursor().row === 0) {
+                        editor.selection.moveTo(1, 0);
+                    }
+                });
+            }
+
+            // Populate the editor with the code
+            editor.setValue(data.code, -1);
+
+            document.getElementById('editFunctionDescription').value = data.description;
+            // Open the modal
+            hideModal(`#functionsModal`);
+            const editFunctionModal = document.getElementById('editFunctionModal');
+            const modal = new bootstrap.Modal(editFunctionModal);
+            modal.show();
+
+        })
+        .catch(error => console.error('Error:', error));
+}
+
+
+function submitEditFunctionForm() {
+    const form = document.getElementById('editFunctionForm');
+    const formData = new FormData(form);
+    
+    // Get the function code from the Ace Editor and append it to the formData
+    const functionCode = editor.getValue();
+    formData.append('code', functionCode);
+
+    fetch(`/apps/function/${formData.get('function_id')}/edit/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': formData.get('csrfmiddlewaretoken')
+        },
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Close the modal
+            hideModal(`#editFunctionModal`);
+            loadFunctions(currentAppId);
+            alertMessage('Edit Function Successfully!', 'alert alert-success');
+        } else {
+            // Handle validation errors
+            console.error('An error occurred while saving the function.');
+            alertMessage('An error occurred while saving the function.', 'alert alert-danger');
+        }
+    })
+    .catch(error => console.error('Error:', error));
 }
 
 

@@ -15,5 +15,6 @@ urlpatterns = [
     path('install-pip-package/', views.install_pip_package, name='install_pip_package'),
     path('get-models/<str:app_id>/', views.list_models_for_app, name='get_models_for_app'),
     path('get-model-definitions/<int:app_id>/', views.get_model_definitions, name='get_model_definitions'),
-
+    path('function/<int:pk>/json/', views.function_detail_json, name='function_detail_json'),
+    path('function/<int:pk>/edit/', views.function_edit, name='function_edit'),
 ]

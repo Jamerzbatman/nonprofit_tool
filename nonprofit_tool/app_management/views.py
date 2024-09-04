@@ -1,6 +1,6 @@
 from django.core.management import call_command
 from django.shortcuts import get_object_or_404
-from .models import App, Payment, Function
+from .models import App, Payment, Function, FunctionVersion
 from .forms import AppForm, AddFunctionForm
 from django.template.loader import render_to_string
 from rest_framework import serializers
@@ -425,3 +425,27 @@ def get_model_definitions(request, app_id):
         return JsonResponse({'error': f'App label {app.name} not found.'}, status=404)
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
+    
+def function_detail_json(request, pk):
+    function = get_object_or_404(Function, pk=pk)
+    data = {
+        'id': function.id,
+        'name': function.name,
+        'url' : function.url,
+        'code': function.code,
+        'description': function.description,
+
+        # Include other fields as needed
+    }
+    return JsonResponse(data)
+
+def function_edit(request, pk):
+    if request.method == 'POST':
+        function = get_object_or_404(Function, pk=pk)
+        function.code = request.POST.get('code')
+        function.description = request.POST.get('description')
+        function.save()
+
+        return JsonResponse({'success': True})
+    return JsonResponse({'success': False})
+
