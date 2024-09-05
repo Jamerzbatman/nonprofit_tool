@@ -4,6 +4,9 @@
     width: auto;
     margin: 1.75rem auto;
 }
+.package-item {
+    padding: 0px;
+}
 
 .keyword {
     color: yellow;
@@ -15,6 +18,23 @@
 .views {
     color: green;
 }
+.package-keyword-from {
+    color: purple;
+    font-weight: bold;
+}
+
+.package-after-from {
+    color: green;
+}
+
+.package-keyword-import {
+    color: purple;
+    font-weight: bold;
+}
+
+.package-after-import {
+    color: yellow;
+}
 
 .name {
     color: lightblue;
@@ -24,7 +44,7 @@
     color: burlywood;
 }
 .parenthesis {
-    color: red;
+    color: yellow;
 }
 
 .col-md-4 {
@@ -143,7 +163,8 @@ pre {
     <div class="modal-dialog" role="document">
       <div class="modal-content">
         <div class="modal-header">
-          <h5 class="modal-title" id="editFunctionModalLabel">Edit Function</h5>
+          <h5 class="modal-title" id="editFunctionName">Edit Function</h5>
+          <p id="editFunctionUrl"></p>
           <button type="button" class="btn-close" onclick="editFunctionCloseButton()" aria-label="Close"></button>
         </div>
         <div class="modal-body">
@@ -151,12 +172,13 @@ pre {
             {% csrf_token %}
             <input type="hidden" id="editFunctionId" name="function_id">
             <div class="form-group">
-              <p id="editFunctionName" class="form-control-plaintext" style="color: white;"></p>
+                <a id="addPackageLink" class="add-package-link" href="#">Add Package</a>
+                <div id="newPackageFields"></div>
+                <div id="functionPackages"></div>
+                <div id="newFunctionPackages"></div>
+                
             </div>
             <div class="form-group">
-                <p id="editFunctionUrl"></p>
-            </div>
-              <div class="form-group">
               <label for="functionCode">Code</label>
               <!-- This div will be converted into the Ace editor -->
               <div id="editFunctionCodeEditor" style="height: 300px; width: 100%;"></div>
@@ -1439,11 +1461,38 @@ function formatUrl(url) {
     url = url.replace(/'([^']*)'/g, `<span class="quote">'$1'</span>`);
 
     // Style parentheses with purple
-    url = url.replace(/\(/g, `<span style="parenthesis">(</span>`);
+    url = url.replace(/\(/g, `<span class="parenthesis">(</span>`);
     url = url.replace(/\)/g, `<span class="parenthesis">)</span>`);
 
     return url;
 }
+
+function formatPackages(packages) {
+    // Get the container where you want to append the styled package elements
+    const functionPackagesDiv = document.getElementById('functionPackages');
+    functionPackagesDiv.innerHTML = ''; // Clear previous content
+
+    packages.forEach(pkg => {
+        let styledText = pkg;
+
+        if (pkg.startsWith('from ')) {
+            styledText = pkg
+                .replace(/(from\s+)(.*)/, '<span class="package-keyword-from">$1</span><span class="package-after-from">$2</span>')
+                .replace(/(import\s+)(.*)/, '<span class="package-keyword-import">$1</span><span class="package-after-import">$2</span>');
+        } else if (pkg.startsWith('import ')) {
+            styledText = pkg
+            .replace(/(import\s+)(.*)/, '<span class="package-keyword-import">$1</span><span class="package-after-import">$2</span>');
+        }
+
+        // Create and append the styled package element
+        const packageElement = document.createElement('div');
+        packageElement.innerHTML = styledText;
+        functionPackagesDiv.appendChild(packageElement);
+    });
+}
+
+
+
 
 function editFunctionCloseButton() {
     hideModal(`#editFunctionModal`);
@@ -1459,6 +1508,7 @@ function editFunction(id) {
             // Populate the text element and other form fields with the data
             document.getElementById('editFunctionId').value = data.id;
             document.getElementById('editFunctionName').textContent = data.name;
+            document.getElementById('editFunctionDescription').value = data.description;
             document.getElementById('editFunctionUrl').innerHTML = formatUrl(data.url);
 
             // Initialize Ace Editor if it hasn't been initialized yet
@@ -1476,10 +1526,33 @@ function editFunction(id) {
                 });
             }
 
-            // Populate the editor with the code
-            editFunctionEditor.setValue(data.code, -1);
+            // Populate the functionPackages div
+            const functionPackagesDiv = document.getElementById('functionPackages');
+            const newPackageFieldsDiv = document.getElementById('newPackageFields');
+            functionPackagesDiv.innerHTML = ''; // Clear previous content
+            newPackageFieldsDiv.innerHTML = ''; // Clear the contents
 
-            document.getElementById('editFunctionDescription').value = data.description;
+            // Handle data.packages based on its type
+            let packages = [];
+            if (Array.isArray(data.packages)) {
+                packages = data.packages;
+            } else if (typeof data.packages === 'string') {
+                try {
+                    packages = JSON.parse(data.packages);
+                    if (!Array.isArray(packages)) {
+                        packages = [packages]; // Wrap in an array if it's not an array
+                    }
+                } catch (e) {
+                    console.error('Error parsing data.packages string:', e);
+                    packages = [data.packages]; // Fallback to treating as a single package
+                }
+            }
+
+            formatPackages(packages);
+
+            editFunctionEditor.setValue(data.code, -1);
+            
+
             // Open the modal
             hideModal(`#functionsModal`);
             const editFunctionModal = document.getElementById('editFunctionModal');
@@ -1499,6 +1572,24 @@ function submitEditFunctionForm() {
     const functionCode = editFunctionEditor.getValue();
     formData.append('code', functionCode);
 
+    // Collect packages from the newFunctionPackages div
+    const newFunctionPackagesDiv = document.getElementById('newFunctionPackages');
+    const packageElements = newFunctionPackagesDiv.querySelectorAll('.package-item');
+    console.info(packageElements)
+    const packages = Array.from(packageElements).map(element => {
+        let packageText = element.textContent.trim();
+        // Format package text to match the desired structure
+        if (packageText.startsWith('from ')) {
+            return packageText.replace(/^(from\s+)(.*)/, 'from $2');
+        } else if (packageText.startsWith('import ')) {
+            return packageText.replace(/^(import\s+)(.*)/, 'import $2');
+        }
+        return packageText;
+    });
+    console.info(packages)
+    // Append packages to formData as a JSON string
+    formData.append('packages', JSON.stringify(packages));
+
     fetch(`/apps/function/${formData.get('function_id')}/edit/`, {
         method: 'POST',
         headers: {
@@ -1510,6 +1601,7 @@ function submitEditFunctionForm() {
     .then(data => {
         if (data.success) {
             // Close the modal
+            
             hideModal(`#editFunctionModal`);
             loadFunctions(currentAppId);
             alertMessage('Edit Function Successfully!', 'alert alert-success');
@@ -1521,7 +1613,6 @@ function submitEditFunctionForm() {
     })
     .catch(error => console.error('Error:', error));
 }
-
 
 function displayErrors(errors) {
     const errorContainer = document.createElement('div');
@@ -1537,4 +1628,92 @@ function displayErrors(errors) {
     // Append the new errors to the modal body
     document.querySelector('.modal-body').prepend(errorContainer);
 }
+
+document.getElementById('addPackageLink').addEventListener('click', (event) => {
+    event.preventDefault(); // Prevent default link behavior
+
+    const newPackageFieldsDiv = document.getElementById('newPackageFields');
+
+    // Toggle the visibility of the input field and "Add" link
+    if (newPackageFieldsDiv.style.display === 'none') {
+        // Show input field and "Add" link
+        newPackageFieldsDiv.style.display = 'flex';
+
+        // Check if input field and "Add" link are already added
+        if (newPackageFieldsDiv.children.length === 0) {
+            const packageInput = document.createElement('input');
+            packageInput.type = 'text';
+            packageInput.className = 'form-control';
+            packageInput.placeholder = 'Enter package';
+
+            const addButton = document.createElement('a');
+            addButton.href = '#';
+            addButton.className = 'btn btn-success';
+            addButton.textContent = 'Add';
+
+            // Add an event listener to the "Add" link
+            addButton.addEventListener('click', (event) => {
+                event.preventDefault(); // Prevent default link behavior
+                const packageValue = packageInput.value.trim();
+                if (packageValue) {
+                    fetch('/apps/install-pip-package/', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': getCSRFToken()
+                        },
+                        body: JSON.stringify({ package_name: packageValue })
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            const newFunctionPackagesDiv = document.getElementById('newFunctionPackages');
+
+                            // Create a new div element to display the package
+                            const packageElement = document.createElement('div');
+                            packageElement.className = 'package-item';
+
+                            // Format the package text with styling
+                            let styledText = packageValue;
+                            if (packageValue.startsWith('from ')) {
+                                styledText = packageValue
+                                    .replace(/(from\s+)(.*)/, '<span class="package-keyword-from">$1</span><span class="package-after-from">$2</span>')
+                                    .replace(/(import\s+)(.*)/, '<span class="package-keyword-import">$1</span><span class="package-after-import">$2</span>');
+                            } else if (packageValue.startsWith('import ')) {
+                                styledText = packageValue
+                                    .replace(/(import\s+)(.*)/, '<span class="package-keyword-import">$1</span><span class="package-after-import">$2</span>');
+                            }
+
+                            packageElement.innerHTML = styledText;
+
+                            // Append the new package element to the newFunctionPackages div
+                            newFunctionPackagesDiv.appendChild(packageElement);
+
+                        } else {
+                            alert(`Failed to install package: ${data.error}`);
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        alert('An error occurred while installing the package.');
+                    });
+
+                    packageInput.value = ''; // Clear the input field
+                }
+            });
+
+            // Append the input field and link to the newPackageFields div
+            newPackageFieldsDiv.appendChild(packageInput);
+            newPackageFieldsDiv.appendChild(addButton);
+        }
+    } else {
+        // Hide the input field and "Add" link
+        newPackageFieldsDiv.style.display = 'none';
+        newPackageFieldsDiv.innerHTML = ''; // Clear the contents
+    }
+});
+
+
+
+
 </script>

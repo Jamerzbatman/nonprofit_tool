@@ -44,9 +44,9 @@ class Function(models.Model):
         if self.pk and self.code:
             original = Function.objects.get(pk=self.pk)
             if original.code != self.code:
-                # Auto-increment and save version
                 FunctionVersion.objects.create(
                     function=self,
+                    packages=original.packages,
                     code=original.code,
                     version=original.versions.count() + 1
                 )
@@ -55,6 +55,7 @@ class Function(models.Model):
 class FunctionVersion(models.Model):
     function = models.ForeignKey(Function, related_name='versions', on_delete=models.CASCADE)
     version = models.IntegerField()
+    packages = models.TextField()
     code = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
 

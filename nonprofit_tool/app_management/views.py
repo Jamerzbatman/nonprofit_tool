@@ -441,6 +441,7 @@ def function_detail_json(request, pk):
         'url' : function.url,
         'code': function.code,
         'description': function.description,
+        'packages': function.packages,
 
         # Include other fields as needed
     }
@@ -452,6 +453,16 @@ def function_edit(request, pk):
         new_code = request.POST.get('code')  # The new code you want to insert
         function.code = new_code
         function.description = request.POST.get('description')
+        # Get the new packages
+        new_packages = json.loads(request.POST.get('packages', '[]'))
+        print(new_packages)
+        # Append new packages to the existing ones
+        existing_packages = json.loads(function.packages or '[]')
+        all_packages = existing_packages + new_packages
+        
+        # Convert packages back to a JSON string
+        function.packages = json.dumps(all_packages)
+
         function.save()
 
         # Get the latest version to see what we need to replace
