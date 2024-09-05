@@ -2,21 +2,19 @@ from app_management.utils import log_error
 import os
 from django.shortcuts import render
 
-# Create your views here.
 
-
-
-
-def testing_this_awesome_function(request):
-    try:
-        print("hotdog")
-    except Exception as e:
-        log_error('5', 'testing_this_awesome_function', str(e))
-
-
-
+## start new
 def new(request):
     try:
-        print("hotdog")
+        print("5")
     except Exception as e:
         log_error('5', 'new', str(e))
+## end new
+
+## start new 1
+def new_1(request):
+    try:
+        print("5")
+    except Exception as e:
+        log_error('5', 'new_1', str(e))
+## end new 1

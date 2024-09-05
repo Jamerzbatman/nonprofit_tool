@@ -1450,6 +1450,7 @@ function editFunctionCloseButton() {
     loadFunctions(currentAppId);
 }
 
+let editFunctionEditor;
 function editFunction(id) {
     // Use AJAX to get the data for the function
     fetch(`/apps/function/${id}/json/`)
@@ -1461,22 +1462,22 @@ function editFunction(id) {
             document.getElementById('editFunctionUrl').innerHTML = formatUrl(data.url);
 
             // Initialize Ace Editor if it hasn't been initialized yet
-            if (!editor) {
+            if (!editFunctionEditor) {
                 const editorElement = document.getElementById("editFunctionCodeEditor");
-                editor = ace.edit(editorElement);
-                editor.setTheme("ace/theme/monokai");
-                editor.session.setMode("ace/mode/python");
+                editFunctionEditor = ace.edit(editorElement);
+                editFunctionEditor.setTheme("ace/theme/monokai");
+                editFunctionEditor.session.setMode("ace/mode/python");
 
                 // Handle changes to enforce read-only behavior for the first line
-                editor.selection.on('changeCursor', function(e) {
-                    if (editor.selection.getCursor().row === 0) {
-                        editor.selection.moveTo(1, 0);
+                editFunctionEditor.selection.on('changeCursor', function(e) {
+                    if (editFunctionEditor.selection.getCursor().row === 0) {
+                        editFunctionEditor.selection.moveTo(1, 0);
                     }
                 });
             }
 
             // Populate the editor with the code
-            editor.setValue(data.code, -1);
+            editFunctionEditor.setValue(data.code, -1);
 
             document.getElementById('editFunctionDescription').value = data.description;
             // Open the modal
@@ -1495,7 +1496,7 @@ function submitEditFunctionForm() {
     const formData = new FormData(form);
     
     // Get the function code from the Ace Editor and append it to the formData
-    const functionCode = editor.getValue();
+    const functionCode = editFunctionEditor.getValue();
     formData.append('code', functionCode);
 
     fetch(`/apps/function/${formData.get('function_id')}/edit/`, {

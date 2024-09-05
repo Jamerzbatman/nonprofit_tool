@@ -319,9 +319,16 @@ def add_function(request, app_id):
                         # Write the original content after the new imports
                         file.writelines(existing_lines)
 
-                        
+                # Define start and end tags based on the function name
+                start_tag = f"## start {request.POST.get('name')}"
+                end_tag = f"## end {request.POST.get('name')}"
+
+                # Format the new code with start and end tags
+                formatted_code = f"\n{start_tag}\n{request.POST.get('code')}\n{end_tag}\n"
+
+
                 with open(views_path, 'a') as file:
-                    file.write("\n\n" + request.POST.get('code'))
+                    file.write(formatted_code)
 
                 with open(urls_path, 'r') as f:
                     urls_content = f.readlines()
@@ -442,10 +449,34 @@ def function_detail_json(request, pk):
 def function_edit(request, pk):
     if request.method == 'POST':
         function = get_object_or_404(Function, pk=pk)
-        function.code = request.POST.get('code')
+        new_code = request.POST.get('code')  # The new code you want to insert
+        function.code = new_code
         function.description = request.POST.get('description')
         function.save()
 
-        return JsonResponse({'success': True})
-    return JsonResponse({'success': False})
+        # Get the latest version to see what we need to replace
+        latest_version = FunctionVersion.objects.filter(function=function).order_by('-version').first()
 
+        if latest_version:
+            # Define the start and end tags based on the function name
+            start_tag = f"## start {function.name}"
+            end_tag = f"## end {function.name}"
+
+            views_path = os.path.join(settings.BASE_DIR, function.app_relation.name.lower(), 'views.py')
+
+            with open(views_path, 'r') as view_file:
+                file_content = view_file.read()
+
+            # Regex to match everything between the start and end tags
+            pattern = rf"({re.escape(start_tag)}\n)(.*?)(\n{re.escape(end_tag)})"
+            
+            # Replace the code between the tags
+            updated_content = re.sub(pattern, rf"\1{new_code}\3", file_content, flags=re.DOTALL)
+
+            # Write the updated content back to views.py
+            with open(views_path, 'w') as file:
+                file.write(updated_content)
+
+        return JsonResponse({'success': True})
+
+    return JsonResponse({'success': False})
