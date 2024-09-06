@@ -460,8 +460,8 @@ def function_edit(request, pk):
         existing_packages = json.loads(function.packages or '[]')
         all_packages = existing_packages + new_packages
         
-        # Convert packages back to a JSON string
-        function.packages = json.dumps(all_packages)
+        if all_packages:
+            function.packages = json.dumps(all_packages)
 
         function.save()
 

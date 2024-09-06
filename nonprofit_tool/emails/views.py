@@ -7,7 +7,7 @@ from django.shortcuts import render
 ## start new
 def new(request):
     try:
-        print("fgsf")
+        print("fgsdddddf")
     except Exception as e:
         log_error('5', 'new', str(e))
 ## end new
@@ -15,7 +15,7 @@ def new(request):
 ## start new 1
 def new_1(request):
     try:
-        print("os")
+        print("oss")
     except Exception as e:
         log_error('5', 'new_1', str(e))
 ## end new 1

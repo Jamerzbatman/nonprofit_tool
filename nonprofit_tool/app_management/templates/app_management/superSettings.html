@@ -1,5 +1,10 @@
 <style>
-.modal-dialog {
+#editFunctionModal .modal-dialog {
+    max-width: 85%;
+    width: auto;
+    margin: 1.75rem auto;
+}
+#editFunctionModal .modal-dialog {
     max-width: 85%;
     width: auto;
     margin: 1.75rem auto;
@@ -7,7 +12,11 @@
 .package-item {
     padding: 0px;
 }
-
+#appList {
+    display: flex;
+    flex-wrap: wrap; /* Allows cards to wrap to the next line if there are too many */
+    gap: 10px; /* Adds space between cards */
+}
 .keyword {
     color: yellow;
 }
@@ -667,20 +676,40 @@ function loadAppList() {
         data.apps.forEach(app => {
             const appBox = document.createElement('div');
             appBox.className = 'card mb-2';
+            appBox.style.width = '200px'; // Set the width to make it narrower
+            appBox.style.height = '100px'; // Set the height to make it taller
+            appBox.style.position = 'relative'; // Enable positioning of the hamburger button
+
             appBox.innerHTML = `
                 <div class="card-body">
                     <h5 class="card-title">${formatAppName(app.name)}</h5>
-                    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-app-id="${app.id}" data-bs-target="#paymentModal-${app.id}">
-                        Payment
-                    </button>
-                    <button type="button" class="btn btn-secondary ms-2" data-app-id="${app.id}" onclick="showModelsModal(${app.id})">
-                        Manage Models
-                    </button>
-                    <button type="button" class="btn btn-info ms-2"  data-app-id="${app.id}" onclick="addFunctionModal(${app.id})">
-                        Functions
-                    </button>
+                    
+                    <!-- Hamburger Button at the top-right corner -->
+                    <div class="dropdown" style="position: absolute; top: 10px; right: 10px;">
+                        <button class="btn btn-secondary dropdown-toggle" type="button" id="dropdownMenuButton-${app.id}" data-bs-toggle="dropdown" aria-expanded="false">
+                            &#9776; <!-- Three lines symbol -->
+                        </button>
+                        <ul class="dropdown-menu" aria-labelledby="dropdownMenuButton-${app.id}">
+                            <li>
+                                <button class="dropdown-item" type="button" data-app-id="${app.id}" data-bs-toggle="modal" data-bs-target="#paymentModal-${app.id}">
+                                    Payment
+                                </button>
+                            </li>
+                            <li>
+                                <button class="dropdown-item" type="button" data-app-id="${app.id}" onclick="showModelsModal(${app.id})">
+                                    Manage Models
+                                </button>
+                            </li>
+                            <li>
+                                <button class="dropdown-item" type="button" data-app-id="${app.id}" onclick="addFunctionModal(${app.id})">
+                                    Functions
+                                </button>
+                            </li>
+                        </ul>
+                    </div>
                 </div>
             `;
+
             appList.appendChild(appBox);
 
             // Payment Modal
@@ -882,8 +911,7 @@ function loadPayments(appId) {
     })
     .catch(error => console.error('Error loading payments:', error));
 }
-
-function loadModels(appId) {
+function loadModels(appId, aceEditorInstance) {
     fetch(`/apps/fetch/${appId}/models/`)
     .then(response => response.json())
     .then(data => {
@@ -892,16 +920,21 @@ function loadModels(appId) {
             console.error('Error:', data.error);
             return;
         }
-        const modelEditor = document.getElementById(`modelEditor-${appId}`);
-        if (modelEditor) {
-            modelEditor.value = data.models_code; // Use value property for textarea
-        }
+        
+        // Clear the editor before loading new content
+        aceEditorInstance.setValue('', -1); // Clears the editor
+        
+        // Load the new models_code into the editor
+        aceEditorInstance.setValue(data.models_code, -1); // Load new data
     })
     .catch(error => {
         console.error('Error:', error);
         alertMessage('Error loading models', 'alert alert-danger');
     });
 }
+
+
+
 function hideModal(ModalId) {
         $(ModalId).removeClass('show'); // Remove the 'show' class
         $(ModalId).css('display', ''); // Reset the display property
@@ -915,9 +948,9 @@ function hideModal(ModalId) {
 }
 
 function createAndShowModal(appId) {
-    loadModels(appId);
     
     const modalId = `modelModal-${appId}`;
+    const editorId = `loadModelsEditor-${appId}`; // Unique editor ID for each app
     
     // Check if modal already exists
     if (!document.getElementById(modalId)) {
@@ -932,7 +965,8 @@ function createAndShowModal(appId) {
                         </div>
                         <div class="modal-body">
                             <button type="button" class="btn btn-secondary" onclick="showAddClassNameModal()">Add New Class</button>
-                            <textarea id="modelEditor-${appId}" class="form-control mt-3" rows="10"></textarea>
+                            <br></br>
+                            <div id="${editorId}" style="height: 300px; width: 100%;"></div> <!-- Unique editor ID -->
                             <button type="button" class="btn btn-primary mt-3" onclick="saveModels(${appId})">Save Models</button>
                         </div>
                     </div>
@@ -944,9 +978,24 @@ function createAndShowModal(appId) {
         document.body.insertAdjacentHTML('beforeend', modalHTML);
     }
     
+    // Show the modal
     const modalElement = document.getElementById(modalId);
     const modal = new bootstrap.Modal(modalElement);
     modal.show();
+
+    // Initialize or reinitialize Ace Editor
+    let aceEditorInstance = ace.edit(editorId);
+    aceEditorInstance.setTheme("ace/theme/monokai");
+    aceEditorInstance.session.setMode("ace/mode/python");
+
+    // Ensure editor is resized when modal is shown
+    modalElement.addEventListener('shown.bs.modal', function () {
+        aceEditorInstance.resize();
+        aceEditorInstance.renderer.updateFull();
+    });
+
+    // Fetch and load models data into the Ace Editor
+    loadModels(appId, aceEditorInstance);
 }
 
 function addFunctionModal(appId) {
@@ -1600,8 +1649,8 @@ function submitEditFunctionForm() {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            // Close the modal
-            
+            packageElements.forEach(element => element.remove());
+
             hideModal(`#editFunctionModal`);
             loadFunctions(currentAppId);
             alertMessage('Edit Function Successfully!', 'alert alert-success');
