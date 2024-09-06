@@ -89,7 +89,55 @@ pre {
 
 
 <!-- addFunctionModal -->
-<div class="modal fade" id="addFunctionModal" tabindex="-1" aria-labelledby="addFunctionModalLabel-${app.id}" aria-hidden="true">
+<div class="modal fade" id="addFunctionModal" tabindex="-1" aria-labelledby="addFunctionModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="addFunctionModalLabel">Function Setup</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="addFunctionForm" onsubmit="submitFunctionForm(); return false;"></form>
+                    <!-- Page 1 -->
+                    <div id="addFunctionModalPage1" class="page">
+                        <div class="mb-3">
+                            <label for="functionName" class="form-label">Function Name</label>
+                            <input type="text" class="form-control" id="functionName" name="name" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="functionDescription" class="form-label">Description</label>
+                            <textarea class="form-control" id="functionDescription" name="description" rows="3"></textarea>
+                        </div>
+                    <button type="button" class="btn btn-primary mt-3" onclick="addFunctionModalNextPage()">Next</button>
+                    </div>
+
+                    <!-- Page 2 -->
+                    <div id="addFunctionModalPage2" class="page d-none">
+                        <div class="mb-3">
+                            <input type="text" class="form-control" id="functionURLResult" readonly>
+                        </div>
+                        <div class="mb-3">
+                            <div id="pathParameterLinks">
+                                <a href="#" class="path-param-link" data-param="<int:">Integer ID</a>
+                                <a href="#" class="path-param-link" data-param="<str:">String (Slug)</a>
+                                <a href="#" class="path-param-link" data-param="<uuid:">UUID</a>
+                            </div>
+                            <div id="parameterInputContainer" class="d-none">
+                                <input type="text" class="form-control mt-2" id="parameterValueInput" placeholder="Enter value">
+                                <button type="button" class="btn btn-success mt-2" id="addParameterButton">Add</button>
+                            </div>
+                        </div>
+                        <button onclick="submitFunctionForm()" type="submit" class="btn btn-primary">Add</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+<div class="modal fade" id="addFunctionddModal" tabindex="-1" aria-labelledby="addFunctionModalLabel-${app.id}" aria-hidden="true">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header">
@@ -97,7 +145,7 @@ pre {
                 <button type="button" class="btn-close" onclick="hideModal('#addFunctionModal')" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <form id="addFunctionForm" onsubmit="submitFunctionForm(); return false;">
+                <form id="addFuncgggtionForm" onsubmit="submitFunctionForm(); return false;">
                     <div class="row">
                         <div class="col-md-6">
                             <div class="mb-3">
@@ -293,7 +341,7 @@ pre {
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="addClassNameModalLabel">Add New Class</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                <button type="button" class="btn-close" onclick="hideAddClassNameModal()" aria-label="Close"></button>
             </div>
             <div class="modal-body">
                 <div class="mb-3">
@@ -383,14 +431,14 @@ function loadFunctions(appId) {
 
                     // Add the "Add a Function" button under the list
                     listHTML += `
-                        <button class="btn btn-primary mt-3" onclick="addFunction(${appId})">Add a Function</button>
+                        <button class="btn btn-primary mt-3" onclick="addFunction()">Add a Function</button>
                     `;
 
                     functionList.innerHTML = listHTML;
                 } else {
                     functionList.innerHTML = `
                         <p>No functions found for this app.</p>
-                        <button class="btn btn-primary" onclick="addFunction(${appId})">Add a Function</button>
+                        <button class="btn btn-primary" onclick="addFunction()">Add a Function</button>
                     `;
                 }
             } else {
@@ -443,7 +491,111 @@ let editor;
 let installPipButtonClicked = false;  // Flag to track if the button's event listener is added
 let isReadOnly = false;
 
-function addFunction(appId) {
+
+function addFunctionModalNextPage() {
+    document.getElementById('addFunctionModalPage1').classList.add('d-none');
+    document.getElementById('addFunctionModalPage2').classList.remove('d-none');
+}
+
+function addFunction() {
+    hideModal(`#functionsModal`);
+    const modalElement = document.getElementById('addFunctionModal');
+    const functionNameInput = document.getElementById('functionName');
+    const functionDescriptionInput = document.getElementById('functionDescription');
+    const functionUrlElement = document.getElementById('functionURLResult');
+    const paramInputContainer = document.getElementById('parameterInputContainer');
+    const paramValueInput = document.getElementById('parameterValueInput');
+    const addParameterButton = document.getElementById('addParameterButton');
+
+    if (functionNameInput) functionNameInput.value = '';
+    if (functionDescriptionInput) functionDescriptionInput.value = '';
+
+    const modal = new bootstrap.Modal(modalElement);
+    modal.show();
+
+    // Hide parameter input container initially
+    if (paramInputContainer) paramInputContainer.classList.add('d-none');
+    if (paramValueInput) paramValueInput.value = '';
+
+    if (functionUrlElement) {
+        const functionUrlContainer = functionUrlElement.closest(".mb-3");
+        functionUrlContainer.innerHTML = `
+            <div class="form-inline mb-3">
+                <span class="keyword">path(</span>
+                <span class="quote">'</span>
+                <span class="quote" id="inputPathPart"></span>
+                <span class="quote">/'</span>
+                <span>, </span>
+                <span class="views">views.</span>
+                <span class="keyword" id="inputViewPart"></span> 
+                <span class="name">, name=</span>
+                <span class="quote">'</span>
+                <span class="quote" id="inputNamePart"></span>
+                <span class="quote">'</span>
+                <span class="keyword">)</span>
+            </div>
+        `;
+    }
+
+    functionNameInput.addEventListener('input', function() {
+        const sanitizedValue = functionNameInput.value.trim().toLowerCase().replace(/\s+/g, '_');
+        const urlSanitizedValue = functionNameInput.value.trim().toLowerCase().replace(/\s+/g, '-');
+        const inputPathPart = document.getElementById('inputPathPart');
+        const inputViewPart = document.getElementById('inputViewPart');
+        const inputNamePart = document.getElementById('inputNamePart');
+
+        if (inputPathPart) inputPathPart.textContent = urlSanitizedValue;
+        if (inputViewPart) inputViewPart.textContent = sanitizedValue;
+        if (inputNamePart) inputNamePart.textContent = sanitizedValue;
+    });
+
+    // Handle path parameter link clicks
+    document.querySelectorAll('#pathParameterLinks .path-param-link').forEach(link => {
+        link.addEventListener('click', function(e) {
+            e.preventDefault();
+            let param = this.getAttribute('data-param'); 
+
+            // Show input field and button
+            if (paramInputContainer) paramInputContainer.classList.remove('d-none');
+            if (paramValueInput) paramValueInput.focus();
+
+            // Move the event listener for the addParameterButton outside the parameter link event
+            addParameterButton.addEventListener('click', () => {
+                const NameParamValueInput = document.getElementById('parameterValueInput');
+                const inputPathPart = document.getElementById('inputPathPart');
+                const currentPath = inputPathPart.textContent || '';
+                const paramName = NameParamValueInput.value.trim().toLowerCase().replace(/\s+/g, '-');
+
+                if (paramName) {
+                    // Ensure proper path formatting
+                    const newPathPart = currentPath.endsWith('/')
+                        ? `${currentPath}${param}${paramName}>`
+                        : `${currentPath}/${param}${paramName}>`;
+                    console.info(newPathPart);
+                    inputPathPart.textContent = newPathPart;
+
+                    // Clear input and hide container
+                    NameParamValueInput.value = "";
+                    if (paramInputContainer) paramInputContainer.classList.add('d-none');
+                }
+            });
+
+            document.querySelectorAll('#pathParameterLinks .path-param-link').forEach(link => {
+                link.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    param = this.getAttribute('data-param'); // Use let to keep param in scope
+                    // Show input field and button
+                    if (paramInputContainer) paramInputContainer.classList.remove('d-none');
+                    if (paramValueInput) paramValueInput.focus();
+                });
+            }); 
+        });   
+
+    });    
+}
+
+
+function OldAddFunction(appId) {
     const functionsModal = document.getElementById('addFunctionModal');
     const modal = new bootstrap.Modal(functionsModal);
     const modelSelector = document.getElementById('modelSelector');
@@ -697,7 +849,7 @@ function loadAppList() {
                             </li>
                             <li>
                                 <button class="dropdown-item" type="button" data-app-id="${app.id}" onclick="showModelsModal(${app.id})">
-                                    Manage Models
+                                    Models
                                 </button>
                             </li>
                             <li>
@@ -948,6 +1100,8 @@ function hideModal(ModalId) {
 }
 
 function createAndShowModal(appId) {
+
+    currentAppId = appId;
     
     const modalId = `modelModal-${appId}`;
     const editorId = `loadModelsEditor-${appId}`; // Unique editor ID for each app
@@ -1003,6 +1157,10 @@ function addFunctionModal(appId) {
     currentAppId = appId; // Set the current app ID
 }
 
+function hideAddClassNameModal() {
+    hideModal(`#addClassNameModal`)
+    createAndShowModal(currentAppId)
+}
 
 function showModelsModal(appId) {
     createAndShowModal(appId);
@@ -1192,6 +1350,7 @@ function saveModels(appId) {
     })
     .catch(error => console.error('Error:', error));
 }
+
 let conversationContext = [];  // This will store the entire chat history
 function isCode(response) {
     // Check for common code block delimiters
@@ -1438,13 +1597,6 @@ function submitFunctionForm() {
     // Prevent default form submission behavior
     event.preventDefault();
     
-    // Function to get the list of package names from the div
-    function getInstalledPackages() {
-        const listPackagesDiv = document.getElementById('list_packages');
-        const packageItems = listPackagesDiv ? listPackagesDiv.getElementsByTagName('div') : [];
-        const packages = Array.from(packageItems).map(item => item.textContent.trim());
-        return packages;
-    }
     const formData = new FormData();
     
     // Get elements with safety checks
@@ -1462,9 +1614,7 @@ function submitFunctionForm() {
     // Manually append necessary fields to formData
     formData.append('name', document.getElementById('functionName').value);
     formData.append('description', document.getElementById('functionDescription').value);
-    formData.append('code', editor.getValue());
     formData.append('url', functionUrlResult);
-    formData.append('packages', JSON.stringify(getInstalledPackages()));
 
     // Send the data via AJAX
     fetch(`/apps/${currentAppId}/functions/add/`, {  
@@ -1480,7 +1630,7 @@ function submitFunctionForm() {
             alertMessage('Function saved successfully!', 'alert alert-success');
             document.getElementById('addFunctionForm').reset();
             hideModal('#addFunctionModal')
-            loadFunctions(currentAppId)
+            editFunction(data.function_id)
         } else {
             // Display errors directly within the modal
             const errorMessages = data.errors || ["An unknown error occurred."];
@@ -1492,6 +1642,7 @@ function submitFunctionForm() {
         displayErrors([error.message]);
     });
 }
+
 
 function formatUrl(url) {
     // Style "path" with yellow

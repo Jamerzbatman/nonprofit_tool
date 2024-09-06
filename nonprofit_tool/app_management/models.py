@@ -29,7 +29,7 @@ class Payment(models.Model):
 class Function(models.Model):
     name = models.CharField(max_length=255)
     packages = models.TextField(blank=True, null=True)
-    code = models.TextField()
+    python = models.TextField(blank=True, null=True)
     description = models.TextField(blank=True, null=True)
     app_relation = models.ForeignKey(App, on_delete=models.CASCADE)
     url = models.CharField(max_length=255, null=True)
@@ -40,14 +40,16 @@ class Function(models.Model):
         return self.name
     
     def save(self, *args, **kwargs):
-        # Example: Automatically save a new version when code is updated
-        if self.pk and self.code:
+        # Check if we're updating an existing function
+        if self.pk and self.python:
             original = Function.objects.get(pk=self.pk)
-            if original.code != self.code:
+            # Ensure the original python code is not null and has changed
+            if original.python is not None and original.python != self.python:
+                # Only create a version if it's not the first save and original.python is not null
                 FunctionVersion.objects.create(
                     function=self,
                     packages=original.packages,
-                    code=original.code,
+                    python=original.python,
                     version=original.versions.count() + 1
                 )
         super().save(*args, **kwargs)
@@ -56,7 +58,7 @@ class FunctionVersion(models.Model):
     function = models.ForeignKey(Function, related_name='versions', on_delete=models.CASCADE)
     version = models.IntegerField()
     packages = models.TextField()
-    code = models.TextField()
+    python = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

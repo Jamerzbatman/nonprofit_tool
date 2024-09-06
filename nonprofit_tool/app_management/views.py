@@ -281,72 +281,25 @@ def save_class(request, app_id):
 
 
 def add_function(request, app_id):
-    app = get_object_or_404(App, pk=app_id)
-    app_label = app.name.lower()
-    views_path = os.path.join(settings.BASE_DIR, app_label, 'views.py')
-    urls_path = os.path.join(settings.BASE_DIR, app_label, 'urls.py')
-
     if request.method == 'POST':
         form = AddFunctionForm(request.POST)
+        app = get_object_or_404(App, pk=app_id)
         if form.is_valid():
             try:
                 function = form.save(commit=False)
                 function.app_relation = app
+                function.packages = json.dumps(["from app_management.utils import log_error"])
                 function.save()
 
-                # Read the current contents of the file
-                with open(views_path, 'r') as file:
-                    existing_lines = file.readlines()
-                
-                # Create a set of existing imports
-                existing_imports = set(line.strip() for line in existing_lines if line.strip().startswith('import') or line.strip().startswith('from'))
-
-                # Create a list to hold new imports
-                new_imports = []
-                
-                # Check each package and add it if it's not already present
-                for package in ast.literal_eval(request.POST.get('packages')):
-                    if package.strip() not in existing_imports:
-                        new_imports.append(package.strip())
-                
-                # If there are new imports, prepend them to the file
-                if new_imports:
-                    with open(views_path, 'w') as file:
-                        # Write the new imports at the top
-                        for import_line in new_imports:
-                            file.write(import_line + '\n')
-                        
-                        # Write the original content after the new imports
-                        file.writelines(existing_lines)
-
-                # Define start and end tags based on the function name
-                start_tag = f"## start {request.POST.get('name')}"
-                end_tag = f"## end {request.POST.get('name')}"
-
-                # Format the new code with start and end tags
-                formatted_code = f"\n{start_tag}\n{request.POST.get('code')}\n{end_tag}\n"
-
-
-                with open(views_path, 'a') as file:
-                    file.write(formatted_code)
-
-                with open(urls_path, 'r') as f:
-                    urls_content = f.readlines()
-
-                updated_content = []
-                url_pattern_added = False
-    
-                for line in urls_content:
-                    updated_content.append(line)
-                    if line.strip().startswith('urlpatterns = ['):
-                        # Insert the new URL pattern after 'urlpatterns = ['
-                        updated_content.append(f"    {request.POST.get('url')},\n")
-                        url_pattern_added = True
-
-                with open(urls_path, 'w') as file:
-                    file.writelines(updated_content)
-
-                return JsonResponse({'success': True})
+                function_code = f"""def {function.name}(request):
+    try:
+        # Code goes here...
+    except Exception as e:
+        log_error('{app_id}', '{function.id}', str(e))
+"""
+                function.python = function_code
+                function.save()
+                return JsonResponse({'success': True, 'function_id': function.id})
             except Exception as e:
                 return JsonResponse({'success': False, 'error': str(e)}, status=500)
         else:
@@ -358,7 +311,7 @@ def add_function(request, app_id):
 class FunctionSerializer(serializers.ModelSerializer):
     class Meta:
         model = Function
-        fields = ['id', 'name', 'description', 'code']
+        fields = ['id', 'name', 'description', 'python']
 
 def manage_functions(request, app_id):
     app = get_object_or_404(App, pk=app_id)
@@ -439,7 +392,7 @@ def function_detail_json(request, pk):
         'id': function.id,
         'name': function.name,
         'url' : function.url,
-        'code': function.code,
+        'code': function.python,
         'description': function.description,
         'packages': function.packages,
 
@@ -455,7 +408,6 @@ def function_edit(request, pk):
         function.description = request.POST.get('description')
         # Get the new packages
         new_packages = json.loads(request.POST.get('packages', '[]'))
-        print(new_packages)
         # Append new packages to the existing ones
         existing_packages = json.loads(function.packages or '[]')
         all_packages = existing_packages + new_packages
