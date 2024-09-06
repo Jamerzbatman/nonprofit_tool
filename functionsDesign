@@ -1,6 +1,3 @@
-4. Displaying and Editing Functions
-View/Edit Function: When a function name is clicked, display a detailed view of the function, showing its code, metadata, and usage instructions.
-Edit Mode: Provide an "Edit" button that turns the display into a form, allowing users to modify the function code or metadata. Save changes back to the database.
 5. Executing and Testing Functions
 Testing Interface: Include a feature within the detailed view to test the function with sample inputs. This would allow users to run the function in a controlled environment and see the output.
 Logging and Debugging: Store logs or errors generated during execution to help with debugging. This can be viewed in the same detailed view or in a separate log viewer.

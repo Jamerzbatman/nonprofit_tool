@@ -94,7 +94,7 @@ pre {
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="addFunctionModalLabel">Function Setup</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                <button type="button" class="btn-close" onclick="hideAddFunctionModal()" aria-label="Close"></button>
             </div>
             <div class="modal-body">
                 <form id="addFunctionForm" onsubmit="submitFunctionForm(); return false;"></form>
@@ -498,7 +498,7 @@ function addFunctionModalNextPage() {
 }
 
 function addFunction() {
-    hideModal(`#functionsModal`);
+    hideModal(`#functionsModal`);    
     const modalElement = document.getElementById('addFunctionModal');
     const functionNameInput = document.getElementById('functionName');
     const functionDescriptionInput = document.getElementById('functionDescription');
@@ -512,6 +512,9 @@ function addFunction() {
 
     const modal = new bootstrap.Modal(modalElement);
     modal.show();
+
+    document.getElementById('addFunctionModalPage1').classList.remove('d-none');
+    document.getElementById('addFunctionModalPage2').classList.add('d-none');
 
     // Hide parameter input container initially
     if (paramInputContainer) paramInputContainer.classList.add('d-none');
@@ -1160,6 +1163,10 @@ function addFunctionModal(appId) {
 function hideAddClassNameModal() {
     hideModal(`#addClassNameModal`)
     createAndShowModal(currentAppId)
+}
+function hideAddFunctionModal() {
+    hideModal(`#addFunctionModal`)
+    loadFunctions(currentAppId)
 }
 
 function showModelsModal(appId) {
