@@ -1,19 +1,47 @@
-5. Executing and Testing Functions
+
+
+Functions
+
+- when adding a function the url isn't getting saved right
+
+- add open ai chat to edit function modal
+
+- Executing and Testing Functions
 Testing Interface: Include a feature within the detailed view to test the function with sample inputs. This would allow users to run the function in a controlled environment and see the output.
 Logging and Debugging: Store logs or errors generated during execution to help with debugging. This can be viewed in the same detailed view or in a separate log viewer.
-6. Managing Function Relationships
+
+- Managing Function Relationships
 Linking to Models/Views: If the function is related to specific models or views, include this information in the metadata and display it in the detailed view. Clicking these links could take the user directly to those models or views for further editing.
 Modular Organization: Allow grouping functions into modules (e.g., User Management, Data Processing). This helps in organizing and managing functions more effectively.
-7. Version Control and Backups
-Version History: Implement version control for functions, allowing users to revert to previous versions if necessary. Store the version history in the database.
-Backup System: Periodically back up the function data, so no changes are permanently lost.
-8. User Access and Permissions
-Permissions Management: Control who can view, edit, or delete functions based on user roles within the Django admin.
-Audit Logs: Maintain audit logs of changes made to functions, including who made the changes and when.
-9. Deploy and Integrate
-Deployment: Ensure that the functions can be deployed with the rest of the app’s codebase, either by writing them to physical files or dynamically loading them from the database during runtime.
-Integration: If these functions need to interact with existing parts of your application (e.g., views, models), ensure they are correctly referenced and executed where needed.
-10. User Experience Enhancements
-Search and Filter: Add search and filter options in the function listing page to quickly find specific functions based on names, descriptions, or modules.
-Tooltips and Help: Provide tooltips or inline help text to guide users through the process of adding, editing, and managing functions.
-This step-by-step approach provides a comprehensive way to create a dynamic, flexible, and user-friendly function management system within your Django app.
+
+- Version Control and Backups
+
+
+
+
+
+Digital Dreamspace
+
+ 1 - make a tab for Digital Dreamspace
+
+ 2 - in Digital Dreamspace i can make a idea in that idea i give a name and description
+
+ 3 - should be able to make functinos for those ideas and have descriptions for each functions and make it where there is tag or categorize their ideas for better organization.
+
+ 4 - should be able to make steps and models for that idea and or function
+
+ 5 - should be able to make urls for each functions 
+
+ 6 - if i want to make a idea into a website i would need a button on the idea to make it into a   website and to edited it or to add to it
+
+ 7 - when hiting the make it into a website button it ask what url i would like by using Namecheap's Domain API
+
+ 8 - after getting the url the program will make a new django project with the template that i have made for all website with a unique sub domain
+
+
+ 9 -  once the project is made then it will it will make the CNAME Record on name cheap's api with that new unique sub domain Ensure proper DNS propagation time handling, as this could take some time, and notify users accordingly
+
+ 10 -  after it make the cname record it will use Let's Encrypt to make a ssl cert Automate the process of renewing the SSL certificates regularly, and provide feedback to users in case of errors during certificate generation.
+
+
+

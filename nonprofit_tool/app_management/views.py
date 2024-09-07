@@ -18,9 +18,6 @@ from django.conf import settings
 from django.http import JsonResponse
 from app_management.utils import log_error
 
-def format_app_name(app_name):
-    # Replace underscores with spaces and capitalize each word
-    return app_name.replace('_', ' ').title()
 
 def list_apps(request):
     apps = App.objects.all().values('id', 'name')
@@ -29,7 +26,7 @@ def list_apps(request):
     formatted_apps = [
         {
             'id': app['id'],
-            'name': format_app_name(app['name'])
+            'name': app['name'].replace('_', ' ').title()
         }
         for app in apps
     ]
@@ -299,6 +296,12 @@ def add_function(request, app_id):
 """
                 function.python = function_code
                 function.save()
+                views_path = os.path.join(settings.BASE_DIR, function.app_relation.name.lower(), 'views.py')
+                start_tag = f"\n## start {function.id}\n"
+                end_tag = f"\n## end {function.id}\n"
+                with open(views_path, 'a') as file:
+                    file.write(start_tag)
+                    file.write(end_tag)
                 return JsonResponse({'success': True, 'function_id': function.id})
             except Exception as e:
                 return JsonResponse({'success': False, 'error': str(e)}, status=500)
@@ -345,11 +348,11 @@ def install_pip_package(request):
             return JsonResponse({'success': True, 'package': package_name})
 
         try:
-            subprocess.check_call([sys.executable, "-m", "pip", "install", package_name])
+            subprocess.check_call([sys.executable, "-m", "python3", "install", package_name])
             # Update the requirements.txt file
             requirements_path = os.path.join(settings.BASE_DIR, 'requirements.txt')
             with open(requirements_path, 'w') as f:
-                subprocess.check_call([sys.executable, "-m", "pip", "freeze"], stdout=f)  
+                subprocess.check_call([sys.executable, "-m", "python3", "freeze"], stdout=f)  
             
             return JsonResponse({'success': True, 'package': package_name})
         
@@ -403,11 +406,13 @@ def function_detail_json(request, pk):
 def function_edit(request, pk):
     if request.method == 'POST':
         function = get_object_or_404(Function, pk=pk)
-        new_code = request.POST.get('code')  # The new code you want to insert
+        new_code = request.POST.get('code') 
         function.code = new_code
         function.description = request.POST.get('description')
+
         # Get the new packages
         new_packages = json.loads(request.POST.get('packages', '[]'))
+
         # Append new packages to the existing ones
         existing_packages = json.loads(function.packages or '[]')
         all_packages = existing_packages + new_packages
@@ -417,29 +422,28 @@ def function_edit(request, pk):
 
         function.save()
 
-        # Get the latest version to see what we need to replace
-        latest_version = FunctionVersion.objects.filter(function=function).order_by('-version').first()
-
-        if latest_version:
-            # Define the start and end tags based on the function name
-            start_tag = f"## start {function.name}"
-            end_tag = f"## end {function.name}"
-
-            views_path = os.path.join(settings.BASE_DIR, function.app_relation.name.lower(), 'views.py')
-
-            with open(views_path, 'r') as view_file:
-                file_content = view_file.read()
-
-            # Regex to match everything between the start and end tags
-            pattern = rf"({re.escape(start_tag)}\n)(.*?)(\n{re.escape(end_tag)})"
-            
-            # Replace the code between the tags
-            updated_content = re.sub(pattern, rf"\1{new_code}\3", file_content, flags=re.DOTALL)
-
-            # Write the updated content back to views.py
-            with open(views_path, 'w') as file:
-                file.write(updated_content)
-
         return JsonResponse({'success': True})
 
     return JsonResponse({'success': False})
+
+
+def function_view_edit(request, pk):
+
+    function = get_object_or_404(Function, pk=pk)
+    start_tag = f"## start {function.id}"
+    end_tag = f"## end {function.id}"
+
+    views_path = os.path.join(settings.BASE_DIR, function.app_relation.name.lower(), 'views.py')
+   
+    with open(views_path, 'r') as view_file:
+        file_content = view_file.read()
+
+    # Regex to match everything between the start and end tags
+    pattern = rf"({re.escape(start_tag)}\n)(.*?)(\n{re.escape(end_tag)})"
+
+    # Replace the code between the tags
+    updated_content = re.sub(pattern, rf"\1{function.python}\3", file_content, flags=re.DOTALL)
+
+    # Write the updated content back to views.py
+    with open(views_path, 'w') as file:
+        file.write(updated_content)
