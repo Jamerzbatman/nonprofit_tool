@@ -22,7 +22,6 @@ Modular Organization: Allow grouping functions into modules (e.g., User Manageme
 
 Digital Dreamspace
 1. Modeling the Data:
-Idea Model: Create a model for ideas with fields for name, description, tags, and status (to indicate whether the idea has been converted into a website or not).
 Function Model: Each idea can have multiple functions, so create a model that links to the Idea model, with fields for the function name, description, and tags/categories for better organization.
 Step and Model Creation: Add models to define the steps and necessary models for each function or idea. Each step can have a name, description, and ordering to ensure functionality is built in stages.
 URL Model: Each function should have an associated URL. Create a model to manage URLs dynamically, ensuring they link back to specific functions and ideas.

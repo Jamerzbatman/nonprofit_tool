@@ -126,7 +126,6 @@ function loadWebsitesList() {
     .then(data => {
         websitesData = data.WebSite; // Store the data globally
         displayWebsites(websitesData); // Display the websites
-        console.info(websitesData)
     })
     .catch(error => alertMessage("Error loading app list: " + error, 'alert alert-danger'));
 }
@@ -184,7 +183,12 @@ function openEditTab(id, name) {
     const editTab = document.createElement('li');
     editTab.className = 'nav-item';
     editTab.innerHTML = `
-        <a class="nav-link" id="edit-tab-${id}" data-bs-toggle="tab" href="#edit-${id}" role="tab" aria-controls="edit-${id}" aria-selected="false">${name}</a>
+        <a class="nav-link" id="edit-tab-${id}" data-bs-toggle="tab" href="#edit-${id}" role="tab" aria-controls="edit-${id}" aria-selected="false">
+            ${name}
+            <button type="button" onclick="closeWebsiteTabContent(${id})" class="close ms-2" aria-label="Close" style="color: white; padding-left: 10px;"data-tab-id="${id}">
+                <span aria-hidden="true">&times;</span>
+            </button>
+        </a>
     `;
     websiteTabs.appendChild(editTab);
 
@@ -199,10 +203,6 @@ function openEditTab(id, name) {
             <h5 class="card-title">Edit ${name}</h5>
             <form id="EditWebSiteForm-${id}">
                 <div class="mb-3">
-                    <label for="EditWebSiteName-${id}" class="form-label">Name</label>
-                    <input type="text" class="form-control" id="EditWebSiteName-${id}" name="name" value="${name}" required>
-                </div>
-                <div class="mb-3">
                     <label for="EditWebSiteDescription-${id}" class="form-label">Description</label>
                     <textarea class="form-control" id="EditWebSiteDescription-${id}" name="description" rows="3" required></textarea>
                 </div>
@@ -215,6 +215,33 @@ function openEditTab(id, name) {
     // Activate the new tab
     const tab = new bootstrap.Tab(editTab.querySelector('a'));
     tab.show();
+}
+
+function closeWebsiteTabContent(id) {
+    // Remove the tab link
+    const tabLink = document.getElementById(`edit-tab-${id}`);
+    const tabPane = document.getElementById(`edit-${id}`);
+
+    if (tabLink) {
+        // Remove the tab link
+        tabLink.parentElement.remove();
+
+        // Remove the corresponding tab pane
+        if (tabPane) {
+            tabPane.remove();
+        }
+
+        // Activate the first tab if available
+        const firstTab = document.querySelector('#websiteTabs .nav-link');
+        if (firstTab) {
+            const firstTabPaneId = firstTab.getAttribute('href').substring(1);
+            const firstTabPane = document.getElementById(firstTabPaneId);
+            if (firstTabPane) {
+                firstTab.classList.add('active');
+                firstTabPane.classList.add('show', 'active');
+            }
+        }
+    }
 }
 // Add event listener to the search input
 document.getElementById('websiteSearch').addEventListener('input', function(event) {
