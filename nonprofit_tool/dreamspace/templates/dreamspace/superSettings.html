@@ -1,8 +1,8 @@
 <style>
-    /* Ensure the dropdown is visible above the modal */
-    .ui-autocomplete {
-        z-index: 1050 !important; /* Bootstrap 5 modals use a z-index of 1050 */
-    }
+/* Ensure the dropdown is visible above the modal */
+.ui-autocomplete {
+    z-index: 1050 !important; /* Bootstrap 5 modals use a z-index of 1050 */
+}
 .tooltip-container {
     position: relative;
     display: inline-block;
@@ -14,7 +14,11 @@
     color: #007bff; /* Bootstrap primary color */
     cursor: pointer;
 }
-
+#WebSiteList {
+    display: flex;
+    flex-wrap: wrap; /* Allows cards to wrap to the next line if there are too many */
+    gap: 10px; /* Adds space between cards */
+}
 .tooltip-text {
     visibility: hidden;
     width: 300px;
@@ -38,14 +42,36 @@
 }
 
 </style>
-    
-<!-- Add App Button -->
-<button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addDreamSpaceModal">
-    Add DreamSpace
-</button>
-<div id="WebSiteList" class="mt-3"></div>
-    <!-- WebSiteList will be listed here -->
+<div class="container-fluid mt-5">
+    <!-- Tab navigation -->
+    <ul class="nav nav-tabs" id="websiteTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <a class="nav-link active" id="dreamspace-tab" data-bs-toggle="tab" href="#dreamspace" role="tab" aria-controls="dreamspace" aria-selected="true">DreamSpace</a>
+        </li>
+    </ul>
+
+    <!-- Tab content -->
+    <div class="tab-content" id="websiteTabContent">
+        <!-- DreamSpace tab -->
+        <div class="tab-pane fade show active" id="dreamspace" role="tabpanel" aria-labelledby="dreamspace-tab">
+            <!-- Add App Button and Search Input -->
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addDreamSpaceModal">
+                    Add DreamSpace
+                </button>
+
+                <!-- Search Input aligned to the far right -->
+                <div class="ms-auto" style="width: 300px;">
+                    <input type="text" id="websiteSearch" class="form-control" placeholder="Search by name or tag...">
+                </div>
+            </div>
+            <div id="WebSiteList" class="mt-3"></div>
+        </div>
+
+        <!-- Dynamic tabs for each website will be inserted here -->
+    </div>
 </div>
+
 <!-- addDreamSpaceModal -->
 <div class="modal fade" id="addDreamSpaceModal" tabindex="-1" aria-labelledby="addDreamSpaceModalLabel" aria-hidden="true">
     <div class="modal-dialog">
@@ -57,7 +83,7 @@
             <div class="modal-body">
                 <!-- Error container -->
                 <div id="formErrors"></div>
-                
+
                 <form id="AddDreamSpaceForm">
                     {% csrf_token %}
                     <div class="mb-3">
@@ -69,7 +95,7 @@
                             Tags
                             <span class="tooltip-container">
                                 <i class="fas fa-question-circle tooltip-icon"></i>
-                                <div class="tooltip-text">Tags help categorize and filter ideas based on themes, topics, or keywords. For example, if you have an idea for a “Health” app, tags like “fitness,” “nutrition,” or “wellness” can be added to make it easier to search for and organize related ideas.</div>
+                                <div class="tooltip-text">Tags help categorize and filter ideas based on themes, topics, or keywords.</div>
                             </span>
                         </label>
                         <input type="text" class="form-control" id="AddDreamSpaceTags" placeholder="Start typing to search tags...">
@@ -86,39 +112,123 @@
         </div>
     </div>
 </div>
+
 <script>
+
 document.getElementById('dreamspace-tab').addEventListener('click', function() {
     loadWebsitesList();
 });
+let websitesData = [];
 // Function to load the list of apps
 function loadWebsitesList() {
     fetch("{% url 'list_website' %}")
     .then(response => response.json())
     .then(data => {
-        const WebSiteList = document.getElementById('WebSiteList');
-        WebSiteList.innerHTML = ''; // Clear existing list
-
-        data.WebSite.forEach(WebSite => {
-            const WebSiteBox = document.createElement('div');
-            WebSiteBox.className = 'card mb-2';
-            WebSiteBox.style.width = '200px'; // Set the width to make it narrower
-            WebSiteBox.style.height = '100px'; // Set the height to make it taller
-            WebSiteBox.style.position = 'relative'; // Enable positioning of the hamburger button
-
-            WebSiteBox.innerHTML = `
-                <div class="card-body">
-                    <h5 class="card-title">${formatAppName(WebSite.name)}</h5>
-                    
-                </div>
-            `;
-
-            WebSiteList.appendChild(WebSiteBox);
-        });
-
+        websitesData = data.WebSite; // Store the data globally
+        displayWebsites(websitesData); // Display the websites
+        console.info(websitesData)
     })
     .catch(error => alertMessage("Error loading app list: " + error, 'alert alert-danger'));
 }
+// Function to display the filtered websites
+function displayWebsites(websites) {
+    const WebSiteList = document.getElementById('WebSiteList');
+    WebSiteList.innerHTML = ''; // Clear existing list
 
+    websites.forEach(WebSite => {
+        const WebSiteBox = document.createElement('div');
+        WebSiteBox.className = 'card mb-2';
+        WebSiteBox.style.width = '500px'; // Set the width to make it narrower
+        WebSiteBox.style.position = 'relative'; // Enable positioning of the hamburger button
+        WebSiteBox.style.border = WebSite.active ? '2px solid green' : '2px solid orange';
+
+        WebSiteBox.innerHTML = `
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h5 class="card-title" style="font-weight: bold;">${WebSite.name}</h5>
+                    <!-- Hamburger Button at the top-right corner -->
+                    <div class="dropdown" style="position: absolute; top: 10px; right: 10px;">
+                        <button class="btn btn-secondary dropdown-toggle" type="button" id="dropdownMenuButton-${WebSite.id}" data-bs-toggle="dropdown" aria-expanded="false">
+                            &#9776; <!-- Three lines symbol -->
+                        </button>
+                        <ul class="dropdown-menu" aria-labelledby="dropdownMenuButton-${WebSite.id}">
+                            <li>
+                                <button class="dropdown-item" type="button" data-app-id="${WebSite.id}" onclick="openEditTab(${WebSite.id}, '${WebSite.name}')">
+                                    Edit
+                                </button>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+                <p class="card-text" style="color: #6c757d; font-size: 14px; margin-top: 10px;">${WebSite.description}</p>
+            </div>
+        `;
+
+        WebSiteList.appendChild(WebSiteBox);
+    });
+}
+function openEditTab(id, name) {
+    // Check if the tab already exists
+    const existingTab = document.getElementById(`edit-tab-${id}`);
+    if (existingTab) {
+        // If the tab already exists, activate it
+        const tab = new bootstrap.Tab(existingTab);
+        tab.show();
+        return;
+    }
+
+    // Create a new tab for editing the website
+    const websiteTabs = document.getElementById('websiteTabs');
+    const websiteTabContent = document.getElementById('websiteTabContent');
+
+    const editTab = document.createElement('li');
+    editTab.className = 'nav-item';
+    editTab.innerHTML = `
+        <a class="nav-link" id="edit-tab-${id}" data-bs-toggle="tab" href="#edit-${id}" role="tab" aria-controls="edit-${id}" aria-selected="false">${name}</a>
+    `;
+    websiteTabs.appendChild(editTab);
+
+    const editTabPane = document.createElement('div');
+    editTabPane.className = 'tab-pane fade';
+    editTabPane.id = `edit-${id}`;
+    editTabPane.role = 'tabpanel';
+    editTabPane.ariaLabelledby = `edit-tab-${id}`;
+
+    editTabPane.innerHTML = `
+        <div class="card-body">
+            <h5 class="card-title">Edit ${name}</h5>
+            <form id="EditWebSiteForm-${id}">
+                <div class="mb-3">
+                    <label for="EditWebSiteName-${id}" class="form-label">Name</label>
+                    <input type="text" class="form-control" id="EditWebSiteName-${id}" name="name" value="${name}" required>
+                </div>
+                <div class="mb-3">
+                    <label for="EditWebSiteDescription-${id}" class="form-label">Description</label>
+                    <textarea class="form-control" id="EditWebSiteDescription-${id}" name="description" rows="3" required></textarea>
+                </div>
+                <button type="submit" class="btn btn-primary">Save changes</button>
+            </form>
+        </div>
+    `;
+    websiteTabContent.appendChild(editTabPane);
+
+    // Activate the new tab
+    const tab = new bootstrap.Tab(editTab.querySelector('a'));
+    tab.show();
+}
+// Add event listener to the search input
+document.getElementById('websiteSearch').addEventListener('input', function(event) {
+    const searchQuery = event.target.value.toLowerCase();
+    
+    // Filter websites based on name or tags
+    const filteredWebsites = websitesData.filter(WebSite => {
+        const nameMatches = WebSite.name.toLowerCase().includes(searchQuery);
+        const tagsMatch = WebSite.tags && WebSite.tags.some(tag => tag.toLowerCase().includes(searchQuery));
+        return nameMatches || tagsMatch;
+    });
+
+    displayWebsites(filteredWebsites);
+});
 document.getElementById('AddDreamSpaceName').addEventListener('input', function() {
     let words = this.value.split(' ');
     for (let i = 0; i < words.length; i++) {
@@ -205,6 +315,7 @@ document.getElementById('AddDreamSpaceForm').addEventListener('submit', function
             $('#tagsContainer').empty();
             $('#tags-input').val('');
             loadWebsitesList()
+            openEditTab(data.id, data.name)
             alertMessage("DreamSpace Created", 'alert alert-success');
         } else {            
             if (data.errors) {

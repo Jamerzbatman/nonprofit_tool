@@ -4,17 +4,22 @@ from .models import WebSite, Tag
 from .forms import WebSiteForm
 
 def list_website(request):
-    WebSites = WebSite.objects.all().values('id', 'name')
-    
-    # Format app names
+    # Use prefetch_related to fetch tags efficiently
+    WebSites = WebSite.objects.prefetch_related('tags').order_by('-updated_at')
+
+    # Format app names and include tags
     formatted_WebSites = [
         {
-            'id': WebSite['id'],
-            'name': WebSite['name'].replace('_', ' ').title()
+            'id': WebSite.id,
+            'name': WebSite.name.replace('_', ' ').title(),
+            'description': WebSite.description,
+            'active': WebSite.is_active,
+            # Include the list of tag names
+            'tags': [tag.name for tag in WebSite.tags.all()]
         }
         for WebSite in WebSites
     ]
-    
+
     return JsonResponse({'WebSite': formatted_WebSites})
 
 
@@ -42,7 +47,7 @@ def add_website(request):
 
             try:
                 # If your app creation logic succeeds, return success response
-                return JsonResponse({'success': True, 'app_id': new_website.id})
+                return JsonResponse({'success': True, 'id': new_website.id, 'name': new_website.name.replace('_', ' ').title()})
             except Exception as e:
                 # If the app creation fails, optionally delete the database entry
                 new_website.delete()
