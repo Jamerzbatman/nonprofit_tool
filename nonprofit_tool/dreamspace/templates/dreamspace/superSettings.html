@@ -1,0 +1,222 @@
+<style>
+    /* Ensure the dropdown is visible above the modal */
+    .ui-autocomplete {
+        z-index: 1050 !important; /* Bootstrap 5 modals use a z-index of 1050 */
+    }
+.tooltip-container {
+    position: relative;
+    display: inline-block;
+    margin-left: 8px;
+}
+
+.tooltip-icon {
+    font-size: 1.2em;
+    color: #007bff; /* Bootstrap primary color */
+    cursor: pointer;
+}
+
+.tooltip-text {
+    visibility: hidden;
+    width: 300px;
+    background-color: #333;
+    color: #fff;
+    text-align: left;
+    border-radius: 5px;
+    padding: 10px;
+    position: absolute;
+    z-index: 1;
+    bottom: 125%; /* Position above the icon */
+    left: 50%;
+    margin-left: -150px; /* Center the tooltip */
+    opacity: 0;
+    transition: opacity 0.3s;
+}
+
+.tooltip-container:hover .tooltip-text {
+    visibility: visible;
+    opacity: 1;
+}
+
+</style>
+    
+<!-- Add App Button -->
+<button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addDreamSpaceModal">
+    Add DreamSpace
+</button>
+<div id="WebSiteList" class="mt-3"></div>
+    <!-- WebSiteList will be listed here -->
+</div>
+<!-- addDreamSpaceModal -->
+<div class="modal fade" id="addDreamSpaceModal" tabindex="-1" aria-labelledby="addDreamSpaceModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="addDreamSpaceModalLabel">DreamSpace</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <!-- Error container -->
+                <div id="formErrors"></div>
+                
+                <form id="AddDreamSpaceForm">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label for="AddDreamSpaceName" class="form-label">Name</label>
+                        <input type="text" class="form-control" id="AddDreamSpaceName" name="name" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="AddDreamSpaceTags" class="form-label">
+                            Tags
+                            <span class="tooltip-container">
+                                <i class="fas fa-question-circle tooltip-icon"></i>
+                                <div class="tooltip-text">Tags help categorize and filter ideas based on themes, topics, or keywords. For example, if you have an idea for a “Health” app, tags like “fitness,” “nutrition,” or “wellness” can be added to make it easier to search for and organize related ideas.</div>
+                            </span>
+                        </label>
+                        <input type="text" class="form-control" id="AddDreamSpaceTags" placeholder="Start typing to search tags...">
+                        <input type="hidden" id="tags-input" name="tags">
+                        <div id="tagsContainer"></div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="AddDreamSpaceDescription" class="form-label">Description</label>
+                        <textarea class="form-control" id="AddDreamSpaceDescription" name="description" rows="3" required></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Add</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+document.getElementById('dreamspace-tab').addEventListener('click', function() {
+    loadWebsitesList();
+});
+// Function to load the list of apps
+function loadWebsitesList() {
+    fetch("{% url 'list_website' %}")
+    .then(response => response.json())
+    .then(data => {
+        const WebSiteList = document.getElementById('WebSiteList');
+        WebSiteList.innerHTML = ''; // Clear existing list
+
+        data.WebSite.forEach(WebSite => {
+            const WebSiteBox = document.createElement('div');
+            WebSiteBox.className = 'card mb-2';
+            WebSiteBox.style.width = '200px'; // Set the width to make it narrower
+            WebSiteBox.style.height = '100px'; // Set the height to make it taller
+            WebSiteBox.style.position = 'relative'; // Enable positioning of the hamburger button
+
+            WebSiteBox.innerHTML = `
+                <div class="card-body">
+                    <h5 class="card-title">${formatAppName(WebSite.name)}</h5>
+                    
+                </div>
+            `;
+
+            WebSiteList.appendChild(WebSiteBox);
+        });
+
+    })
+    .catch(error => alertMessage("Error loading app list: " + error, 'alert alert-danger'));
+}
+
+document.getElementById('AddDreamSpaceName').addEventListener('input', function() {
+    let words = this.value.split(' ');
+    for (let i = 0; i < words.length; i++) {
+        words[i] = words[i].charAt(0).toUpperCase() + words[i].slice(1).toLowerCase();
+    }
+    this.value = words.join(' ');
+});
+
+let tags = [];
+
+// Function to update the hidden input and display tags
+function updateTags() {
+    $('#tags-input').val(tags.join(','));
+    
+    // Clear the existing tags container
+    $('#tagsContainer').empty();
+    
+    // Append each tag to the tags container
+    tags.forEach(tag => {
+        $('#tagsContainer').append(`<span class="badge bg-primary m-1">${tag}</span>`);
+    });
+}
+
+// Handle keydown event for AddDreamSpaceTags input
+$('#AddDreamSpaceTags').on('keydown', function(e) {
+    if (e.key === 'Enter') {
+        e.preventDefault();
+        const input = $(this).val().trim();
+        if (input !== '' && !tags.includes(input)) {
+            tags.push(input);
+            $(this).val('');
+            updateTags();
+        }
+    }
+});
+
+// Initialize autocomplete
+$('#AddDreamSpaceTags').autocomplete({
+    source: function(request, response) {
+        $.ajax({
+            url: "{% url 'tag_autocomplete' %}",
+            dataType: 'json',
+            data: {
+                term: request.term
+            },
+            success: function(data) {
+                response(data.tags);
+            },
+            error: function(xhr, status, error) {
+                console.error('Error:', error);
+            }
+        });
+    },
+    select: function(event, ui) {
+        if (!tags.includes(ui.item.value)) {
+            tags.push(ui.item.value);
+            $('#AddDreamSpaceTags').val('');
+            updateTags();
+        }
+        return false;
+    }
+});
+
+
+
+document.getElementById('AddDreamSpaceForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const form = e.target;
+    const formData = new FormData(form);
+    
+    fetch("{% url 'add_website' %}", {
+        method: "POST",
+        headers: {
+            'X-CSRFToken': formData.get('csrfmiddlewaretoken'),
+        },
+        body: formData,
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            $('#addDreamSpaceModal').modal('hide');
+            $('#AddDreamSpaceForm')[0].reset();
+            $('#tagsContainer').empty();
+            $('#tags-input').val('');
+            loadWebsitesList()
+            alertMessage("DreamSpace Created", 'alert alert-success');
+        } else {            
+            if (data.errors) {
+                alertMessage("Error: " + (data.errors || "Failed to save Website"), 'alert alert-danger');
+            } else if (data.error) {
+                alertMessage("Error: " + (data.error || "Failed to save Website"), 'alert alert-danger');
+            }
+        }
+    })
+    
+    .catch(error => alertMessage("Error: " + (error || "Failed to save Website"), 'alert alert-danger'));
+
+});
+
+</script>

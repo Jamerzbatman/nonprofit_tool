@@ -5,6 +5,7 @@ from django.contrib import admin
 
 
 urlpatterns = [
+    path('dreamspace/', include('dreamspace.urls')),
     path('open_ai/', include('open_ai.urls')),
     path('emails/', include('emails.urls')),
     path('admin/', admin.site.urls),
