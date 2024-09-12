@@ -1,13 +1,26 @@
 from .forms import WebSiteForm
 from django.http import JsonResponse
-from .models import WebSite, Tag
+from .models import WebSite, Tag, Log
 from .forms import WebSiteForm
+from django.db.models import Exists, OuterRef, BooleanField
+
+
+def list_logs(request, website_id):
+    # Filter logs to include only unresolved ones
+    logs = Log.objects.filter(website_relation_id=website_id, resolved=False).values('id', 'message', 'type', 'timestamp', 'traceback', 'resolved')
+    
+    return JsonResponse({'logs': list(logs)})
 
 def list_website(request):
-    # Use prefetch_related to fetch tags efficiently
-    WebSites = WebSite.objects.prefetch_related('tags').order_by('-updated_at')
+    # Subquery to check for unresolved logs
+    error_subquery = Log.objects.filter(website_relation=OuterRef('pk'), resolved=False).values('pk')
 
-    # Format app names and include tags
+    # Annotate websites with an 'error' boolean field
+    WebSites = WebSite.objects.annotate(
+        has_error=Exists(error_subquery)
+    ).order_by('-has_error', '-updated_at')
+
+    # Format app names and include tags and error status
     formatted_WebSites = [
         {
             'id': WebSite.id,
@@ -15,7 +28,9 @@ def list_website(request):
             'description': WebSite.description,
             'active': WebSite.is_active,
             # Include the list of tag names
-            'tags': [tag.name for tag in WebSite.tags.all()]
+            'tags': [tag.name for tag in WebSite.tags.all()],
+            # Include the error status
+            'error': WebSite.has_error
         }
         for WebSite in WebSites
     ]

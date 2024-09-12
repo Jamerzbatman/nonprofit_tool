@@ -62,3 +62,15 @@ class WebSiteVersion(models.Model):
 
     def __str__(self):
         return f'{self.website.name} - v{self.version}'
+
+
+class Log(models.Model):
+    message = models.TextField()  # The actual error message
+    type = models.CharField(max_length=255)  # Type or category of the error
+    traceback = models.TextField(blank=True, null=True)  # Full traceback of the error
+    timestamp = models.DateTimeField(auto_now_add=True)  # When the error occurred
+    resolved = models.BooleanField(default=False)  # If the error has been resolved
+    website_relation = models.ForeignKey(WebSite, on_delete=models.CASCADE)
+
+    def __str__(self):
+        return f"{self.type} - {self.message[:50]}"

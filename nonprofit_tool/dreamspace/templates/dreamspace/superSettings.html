@@ -40,6 +40,22 @@
     visibility: visible;
     opacity: 1;
 }
+.btn-group {
+    display: flex;
+    gap: 0.5rem; /* Space between buttons */
+}
+
+.btn {
+    border-radius: 0.25rem; /* Rounded corners */
+}
+
+.btn i {
+    margin-right: 0.5rem; /* Space between icon and text */
+}
+
+.btn-secondary {
+    font-weight: bold; /* Make the "Show All" button text bold */
+}
 
 </style>
 <div class="container-fluid mt-5">
@@ -139,7 +155,7 @@ function displayWebsites(websites) {
         WebSiteBox.className = 'card mb-2';
         WebSiteBox.style.width = '500px'; // Set the width to make it narrower
         WebSiteBox.style.position = 'relative'; // Enable positioning of the hamburger button
-        WebSiteBox.style.border = WebSite.active ? '2px solid green' : '2px solid orange';
+        WebSiteBox.style.border = WebSite.error ? '2px solid red' : (WebSite.active ? '2px solid green' : '2px solid orange');
 
         WebSiteBox.innerHTML = `
             <div class="card-body">
@@ -156,16 +172,167 @@ function displayWebsites(websites) {
                                     Edit
                                 </button>
                             </li>
+                            <li>
+                                <button class="dropdown-item" type="button" data-app-id="${WebSite.id}" onclick="Logs(${WebSite.id}, '${WebSite.name}')">
+                                    Logs
+                                </button>
+                            </li>
                         </ul>
                     </div>
                 </div>
                 <p class="card-text" style="color: #6c757d; font-size: 14px; margin-top: 10px;">${WebSite.description}</p>
+                
             </div>
         `;
 
         WebSiteList.appendChild(WebSiteBox);
     });
 }
+let logIntervals = {};  // Store interval IDs for different tabs
+let currentFilters = {};  // Store current filters for different tabs
+
+function Logs(id, name) {
+    // Check if the tab already exists
+    const existingTab = document.getElementById(`edit-tab-${id}`);
+    if (existingTab) {
+        // If the tab already exists, activate it
+        const tab = new bootstrap.Tab(existingTab);
+        tab.show();
+        return;
+    }
+
+    // Create a new tab for editing the website
+    const websiteTabs = document.getElementById('websiteTabs');
+    const websiteTabContent = document.getElementById('websiteTabContent');
+
+    const editTab = document.createElement('li');
+    editTab.className = 'nav-item';
+    editTab.innerHTML = `
+        <a class="nav-link" id="edit-tab-${id}" data-bs-toggle="tab" href="#edit-${id}" role="tab" aria-controls="edit-${id}" aria-selected="false">
+            Logs - ${name}
+            <button type="button" onclick="closeWebsiteTabContent(${id})" class="close ms-2" aria-label="Close" style="color: white; padding-left: 10px;" data-tab-id="${id}">
+                <span aria-hidden="true">&times;</span>
+            </button>
+        </a>
+    `;
+    websiteTabs.appendChild(editTab);
+
+    const editTabPane = document.createElement('div');
+    editTabPane.className = 'tab-pane fade';
+    editTabPane.id = `edit-${id}`;
+    editTabPane.role = 'tabpanel';
+    editTabPane.ariaLabelledby = `edit-tab-${id}`;
+
+    editTabPane.innerHTML = `
+        <div class="btn-group" role="group" aria-label="Log Filters">
+            <button type="button" class="btn btn-danger me-2" onclick="filterLogs('error', '${id}')">
+                <i class="bi bi-x-circle"></i> Error
+            </button>
+            <button type="button" class="btn btn-success me-2" onclick="filterLogs('info', '${id}')">
+                <i class="bi bi-info-circle"></i> Info
+            </button>
+            <button type="button" class="btn btn-warning me-2" onclick="filterLogs('debug', '${id}')">
+                <i class="bi bi-bug"></i> Debug
+            </button>
+            <button type="button" class="btn btn-secondary" onclick="filterLogs('all', '${id}')">
+                <i class="bi bi-filter"></i> Show All
+            </button>
+        </div>
+        <div class="card-body" id="logs-container-${id}">
+            <!-- Logs will be loaded here -->
+        </div>
+    `;
+    websiteTabContent.appendChild(editTabPane);
+
+    // Activate the new tab
+    const tab = new bootstrap.Tab(editTab.querySelector('a'));
+    tab.show();
+
+    // Initialize filter type for this tab
+    currentFilters[id] = 'all';
+
+    // Fetch and display logs
+    loadLogs(id);
+}
+
+function fetchLogs(id) {
+    const filter = currentFilters[id] || 'all';  // Use the stored filter type
+
+    fetch(`/dreamspace/list-logs/${id}/?filter=${filter}`)
+        .then(response => response.json())
+        .then(data => {
+            allLogs = data.logs;  // Store logs globally
+            filterLogs(filter, id);  // Apply the current filter
+        })
+        .catch(error => console.error('Error fetching logs:', error));
+}
+
+function filterLogs(type, id) {
+    const logsContainer = document.getElementById(`logs-container-${id}`);
+
+    if (!logsContainer) {
+        console.error('Logs container not found');
+        return;
+    }
+
+    // Store the current filter type for this tab
+    currentFilters[id] = type;
+
+    // If 'all' is selected, show all logs
+    let filteredLogs = [];
+    if (type === 'all') {
+        filteredLogs = allLogs;
+    } else {
+        // Filter logs based on type
+        filteredLogs = allLogs.filter(log => log.type.toLowerCase() === type.toLowerCase());
+    }
+
+    // Update the container with filtered logs
+    logsContainer.innerHTML = filteredLogs.map(log => {
+        let borderColor;
+        switch (log.type.toLowerCase()) {
+            case 'error':
+                borderColor = '2px solid red';
+                break;
+            case 'info':
+                borderColor = '2px solid green';
+                break;
+            default:
+                borderColor = '2px solid orange';
+                break;
+        }
+        return `
+            <div class="card mb-2" style="border: ${borderColor};">
+                <div class="card-body">
+                    <p class="card-text"><strong>Message:</strong> ${log.message}</p>
+                    <p class="card-text"><strong>Timestamp:</strong> ${new Date(log.timestamp).toLocaleString()}</p>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+function loadLogs(id) {
+    // Initial load of logs with the current filter
+    fetchLogs(id);
+
+    // Set up an interval to reload logs every 10 seconds (10000 milliseconds)
+    if (logIntervals[id]) {
+        clearInterval(logIntervals[id]);  // Clear previous interval if it exists
+    }
+    logIntervals[id] = setInterval(() => fetchLogs(id), 10000);
+
+    // Handle tab close functionality
+    document.querySelector(`button[data-tab-id="${id}"]`).addEventListener('click', () => {
+        if (logIntervals[id]) {
+            clearInterval(logIntervals[id]);  // Stop the interval when the tab is closed
+            delete logIntervals[id];  // Remove the interval ID from the object
+        }
+    });
+}
+
+
+
 function openEditTab(id, name) {
     // Check if the tab already exists
     const existingTab = document.getElementById(`edit-tab-${id}`);
