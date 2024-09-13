@@ -1,6 +1,6 @@
 from .forms import WebSiteForm
 from django.http import JsonResponse
-from .models import WebSite, Tag, Log
+from .models import WebSite, Tag, Log, App
 from .forms import WebSiteForm
 from django.db.models import Exists, OuterRef, BooleanField
 
@@ -10,6 +10,50 @@ def list_logs(request, website_id):
     logs = Log.objects.filter(website_relation_id=website_id, resolved=False).values('id', 'message', 'type', 'timestamp', 'traceback', 'resolved')
     
     return JsonResponse({'logs': list(logs)})
+
+def list_app(request, website_id):
+    # Filter apps associated with the given website and are active
+    error_subquery = Log.objects.filter(app_relation=OuterRef('pk'), resolved=False).values('pk')
+    
+        # Annotate websites with an 'error' boolean field
+    apps = App.objects.annotate(
+        has_error=Exists(error_subquery)
+    ).order_by('-has_error', '-updated_at')
+
+        # Format app names and include tags and error status
+    formatted_apps = [
+        {
+            'id': app.id,
+            'name': app.name,
+            'description': app.description,
+            'active': app.is_active,
+            # Include the list of tag names
+            'tags': [tag.name for tag in app.tags.all()],
+            # Include the error status
+            'error': app.has_error
+        }
+        for app in apps
+    ]
+    app_website = WebSite.objects.filter(id=website_id).first()
+
+    if app_website:
+        formatted_WebSite = {
+            'id': app_website.id,
+            'name': app_website.name.replace('_', ' ').title(),
+            'description': app_website.description,
+            'active': app_website.is_active,
+            # Include the list of tag names
+            'tags': [tag.name for tag in app_website.tags.all()],
+        }
+    else:
+        formatted_WebSite = None
+
+
+    # Filter the website based on the provided ID and convert it to a serializable format
+    app_website = WebSite.objects.filter(id=website_id).values('id', 'name').first()  # Use `.first()` to get a single website
+
+    return JsonResponse({'apps': formatted_apps, 'WebSite': formatted_WebSite})
+
 
 def list_website(request):
     # Subquery to check for unresolved logs

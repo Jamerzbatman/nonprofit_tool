@@ -47,7 +47,7 @@ class WebSiteVersion(models.Model):
     name = models.TextField()
     description = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
-    tags = models.ManyToManyField(Tag, related_name='website_versions')
+    tags = models.ManyToManyField(Tag)
 
     class Meta:
         unique_together = ('website', 'version')
@@ -63,6 +63,18 @@ class WebSiteVersion(models.Model):
     def __str__(self):
         return f'{self.website.name} - v{self.version}'
 
+class App(models.Model):
+    name = models.CharField(max_length=255)
+    description = models.TextField()
+    tags = models.ManyToManyField(Tag)
+    website_relation = models.ManyToManyField('WebSite', related_name='apps', blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    is_active = models.BooleanField(default=True)
+
+    def __str__(self):
+        return self.name
+    
 
 class Log(models.Model):
     message = models.TextField()  # The actual error message
@@ -71,6 +83,7 @@ class Log(models.Model):
     timestamp = models.DateTimeField(auto_now_add=True)  # When the error occurred
     resolved = models.BooleanField(default=False)  # If the error has been resolved
     website_relation = models.ForeignKey(WebSite, on_delete=models.CASCADE)
+    app_relation = models.ForeignKey(App, on_delete=models.CASCADE, blank=True, null=True)
 
     def __str__(self):
         return f"{self.type} - {self.message[:50]}"

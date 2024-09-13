@@ -128,7 +128,42 @@
         </div>
     </div>
 </div>
-
+<!-- Add App Modal -->
+<div class="modal fade" id="addApptoDreamSpaceModal" tabindex="-1" aria-labelledby="addApptoDreamSpaceModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="addApptoDreamSpaceModalLabel">Add New App</h5>
+          <button type="button" onclick="hideAddAppModal()" class="btn-close" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <form id="addAppForm">
+            <div class="mb-3">
+              <label for="appName" class="form-label">App Name</label>
+              <input type="text" class="form-control" id="appName" placeholder="Enter app name">
+            </div>
+            <div class="mb-3">
+                <label for="addAppTags" class="form-label">
+                    Tags
+                    <span class="tooltip-container">
+                        <i class="fas fa-question-circle tooltip-icon"></i>
+                        <div class="tooltip-text">Tags help categorize and filter ideas based on themes, topics, or keywords.</div>
+                    </span>
+                </label>
+                <input type="text" class="form-control" id="addAppTags" placeholder="Start typing to search tags...">
+                <input type="hidden" id="addApp-tags-input" name="tags">
+                <div id="updateAddAppTagsContainer"></div>
+            </div>
+            <div class="mb-3">
+              <label for="appDescription" class="form-label">App Description</label>
+              <textarea class="form-control" id="appDescription" rows="3" placeholder="Enter app description"></textarea>
+            </div>
+            <button type="submit" class="btn btn-primary">Add</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
 <script>
 
 document.getElementById('dreamspace-tab').addEventListener('click', function() {
@@ -193,7 +228,8 @@ let currentFilters = {};  // Store current filters for different tabs
 
 function Logs(id, name) {
     // Check if the tab already exists
-    const existingTab = document.getElementById(`edit-tab-${id}`);
+
+    const existingTab = document.getElementById(`tab-Logs-${id}`);
     if (existingTab) {
         // If the tab already exists, activate it
         const tab = new bootstrap.Tab(existingTab);
@@ -208,9 +244,9 @@ function Logs(id, name) {
     const editTab = document.createElement('li');
     editTab.className = 'nav-item';
     editTab.innerHTML = `
-        <a class="nav-link" id="edit-tab-${id}" data-bs-toggle="tab" href="#edit-${id}" role="tab" aria-controls="edit-${id}" aria-selected="false">
-            Logs - ${name}
-            <button type="button" onclick="closeWebsiteTabContent(${id})" class="close ms-2" aria-label="Close" style="color: white; padding-left: 10px;" data-tab-id="${id}">
+        <a class="nav-link" id="tab-Logs-${id}" data-bs-toggle="tab" href="#logs-${id}" role="tab" aria-controls="edit-${id}" aria-selected="false">
+            Logs: ${name}
+            <button type="button" onclick="closeLogTabContent(${id})" class="close ms-2" aria-label="Close" style="color: white; padding-left: 10px;" data-tab-id="${id}">
                 <span aria-hidden="true">&times;</span>
             </button>
         </a>
@@ -219,9 +255,9 @@ function Logs(id, name) {
 
     const editTabPane = document.createElement('div');
     editTabPane.className = 'tab-pane fade';
-    editTabPane.id = `edit-${id}`;
+    editTabPane.id = `logs-${id}`;
     editTabPane.role = 'tabpanel';
-    editTabPane.ariaLabelledby = `edit-tab-${id}`;
+    editTabPane.ariaLabelledby = `tab-Logs-${id}`;
 
     editTabPane.innerHTML = `
         <div class="btn-group" role="group" aria-label="Log Filters">
@@ -255,6 +291,32 @@ function Logs(id, name) {
     loadLogs(id);
 }
 
+function closeLogTabContent(id) {
+    // Remove the tab link
+    const tabLink = document.getElementById(`tab-Logs-${id}`);
+    const tabPane = document.getElementById(`logs-${id}`);
+
+    if (tabLink) {
+        // Remove the tab link
+        tabLink.parentElement.remove();
+
+        // Remove the corresponding tab pane
+        if (tabPane) {
+            tabPane.remove();
+        }
+
+        // Activate the first tab if available
+        const firstTab = document.querySelector('#websiteTabs .nav-link');
+        if (firstTab) {
+            const firstTabPaneId = firstTab.getAttribute('href').substring(1);
+            const firstTabPane = document.getElementById(firstTabPaneId);
+            if (firstTabPane) {
+                firstTab.classList.add('active');
+                firstTabPane.classList.add('show', 'active');
+            }
+        }
+    }
+}
 function fetchLogs(id) {
     const filter = currentFilters[id] || 'all';  // Use the stored filter type
 
@@ -333,8 +395,7 @@ function loadLogs(id) {
 
 
 
-function openEditTab(id, name) {
-    // Check if the tab already exists
+function openEditTab(id) {
     const existingTab = document.getElementById(`edit-tab-${id}`);
     if (existingTab) {
         // If the tab already exists, activate it
@@ -343,45 +404,102 @@ function openEditTab(id, name) {
         return;
     }
 
-    // Create a new tab for editing the website
-    const websiteTabs = document.getElementById('websiteTabs');
-    const websiteTabContent = document.getElementById('websiteTabContent');
+    fetch(`/dreamspace/list-apps/${id}/`)
+        .then(response => response.json())
+        .then(data => {
+            const websiteTabs = document.getElementById('websiteTabs');
+            const websiteTabContent = document.getElementById('websiteTabContent');
 
-    const editTab = document.createElement('li');
-    editTab.className = 'nav-item';
-    editTab.innerHTML = `
-        <a class="nav-link" id="edit-tab-${id}" data-bs-toggle="tab" href="#edit-${id}" role="tab" aria-controls="edit-${id}" aria-selected="false">
-            ${name}
-            <button type="button" onclick="closeWebsiteTabContent(${id})" class="close ms-2" aria-label="Close" style="color: white; padding-left: 10px;"data-tab-id="${id}">
-                <span aria-hidden="true">&times;</span>
-            </button>
-        </a>
-    `;
-    websiteTabs.appendChild(editTab);
+            const editTab = document.createElement('li');
+            editTab.className = 'nav-item';
+            editTab.innerHTML = `
+                <a class="nav-link" id="edit-tab-${id}" data-bs-toggle="tab" href="#edit-${id}" role="tab" aria-controls="edit-${id}" aria-selected="false">
+                    ${data.WebSite.name}
+                    <button type="button" onclick="closeWebsiteTabContent(${id})" class="close ms-2" aria-label="Close" style="color: white; padding-left: 10px;" data-tab-id="${id}">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </a>
+            `;
+            websiteTabs.appendChild(editTab);
 
-    const editTabPane = document.createElement('div');
-    editTabPane.className = 'tab-pane fade';
-    editTabPane.id = `edit-${id}`;
-    editTabPane.role = 'tabpanel';
-    editTabPane.ariaLabelledby = `edit-tab-${id}`;
+            const appTabPane = document.createElement('div');
+            appTabPane.className = 'tab-pane fade';
+            appTabPane.id = `edit-${id}`;
+            appTabPane.role = 'tabpanel';
+            appTabPane.ariaLabelledby = `edit-tab-${id}`;
 
-    editTabPane.innerHTML = `
-        <div class="card-body">
-            <h5 class="card-title">Edit ${name}</h5>
-            <form id="EditWebSiteForm-${id}">
-                <div class="mb-3">
-                    <label for="EditWebSiteDescription-${id}" class="form-label">Description</label>
-                    <textarea class="form-control" id="EditWebSiteDescription-${id}" name="description" rows="3" required></textarea>
-                </div>
-                <button type="submit" class="btn btn-primary">Save changes</button>
-            </form>
-        </div>
-    `;
-    websiteTabContent.appendChild(editTabPane);
+            // Add "Add New App" button before listing apps
+            const addAppButton = document.createElement('button');
+            addAppButton.className = 'btn btn-primary mb-3';
+            addAppButton.innerHTML = 'Add New App';
+            addAppButton.onclick = function() {
+                const modal = new bootstrap.Modal(document.getElementById('addApptoDreamSpaceModal'));
+                modal.show();
+            };
 
-    // Activate the new tab
-    const tab = new bootstrap.Tab(editTab.querySelector('a'));
-    tab.show();
+            appTabPane.appendChild(addAppButton);
+
+            // Listing existing apps
+            data.apps.forEach(app => {
+                const appBox = document.createElement('div');
+                appBox.className = 'card mb-2';
+                appBox.style.width = '500px'; // Set the width to make it narrower
+                appBox.style.position = 'relative'; // Enable positioning of the hamburger button
+                appBox.style.border = app.error ? '2px solid red' : (app.active ? '2px solid green' : '2px solid orange');
+                appBox.innerHTML = `
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h5 class="card-title" style="font-weight: bold;">${app.name}</h5>
+                            <!-- Hamburger Button at the top-right corner -->
+                            <div class="dropdown" style="position: absolute; top: 10px; right: 10px;">
+                                <button class="btn btn-secondary dropdown-toggle" type="button" id="dropdownMenuButton-${app.id}" data-bs-toggle="dropdown" aria-expanded="false">
+                                    &#9776; <!-- Three lines symbol -->
+                                </button>
+                                <ul class="dropdown-menu" aria-labelledby="dropdownMenuButton-${app.id}">
+                                    <li>
+                                        <button class="dropdown-item" type="button" data-app-id="${app.id}" onclick="openEditTab(${app.id}, '${app.name}')">
+                                            Edit
+                                        </button>
+                                    </li>
+                                    <li>
+                                        <button class="dropdown-item" type="button" data-app-id="${app.id}" onclick="Logs(${app.id}, '${app.name}')">
+                                            Logs
+                                        </button>
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+                        <p class="card-text" style="color: #6c757d; font-size: 14px; margin-top: 10px;">${app.description}</p>
+                    </div>
+                `;
+
+                appTabPane.appendChild(appBox);
+            });
+
+            websiteTabContent.appendChild(appTabPane);
+
+            // Activate the new tab
+            const tab = new bootstrap.Tab(editTab.querySelector('a'));
+            tab.show();
+        })
+        .catch(error => console.error('Error fetching apps:', error));
+}
+
+
+// Function to hide the modal
+function hideAddAppModal() {
+    const modalElement = document.getElementById('addApptoDreamSpaceModal');
+    const modal = new bootstrap.Modal(modalElement);
+
+    if (modalElement.classList.contains('show')) {
+        modal.hide(); // Use Bootstrap's hide method
+        modalElement.classList.remove('show'); // Ensure 'show' class is removed
+        modalElement.style.display = 'none'; // Force-hide the modal if it's stuck
+        document.body.classList.remove('modal-open'); // Remove 'modal-open' class from body
+        document.querySelector('.modal-backdrop')?.remove(); // Remove backdrop if present
+    } else {
+        console.info("Modal is already hidden");
+    }
 }
 
 function closeWebsiteTabContent(id) {
@@ -480,6 +598,59 @@ $('#AddDreamSpaceTags').autocomplete({
         if (!tags.includes(ui.item.value)) {
             tags.push(ui.item.value);
             $('#AddDreamSpaceTags').val('');
+            updateTags();
+        }
+        return false;
+    }
+});
+
+// Function to update the hidden input and display tags
+function updateAddAppTags() {
+    $('#addApp-tags-input').val(tags.join(','));
+    
+    // Clear the existing tags container
+    $('#updateAddAppTagsContainer').empty();
+    
+    // Append each tag to the tags container
+    tags.forEach(tag => {
+        $('#updateAddAppTagsContainer').append(`<span class="badge bg-primary m-1">${tag}</span>`);
+    });
+}
+
+// Handle keydown event for addAppTags input
+$('#addAppTags').on('keydown', function(e) {
+    if (e.key === 'Enter') {
+        e.preventDefault();
+        const input = $(this).val().trim();
+        if (input !== '' && !tags.includes(input)) {
+            tags.push(input);
+            $(this).val('');
+            updateAddAppTags();
+        }
+    }
+});
+
+// Initialize autocomplete
+$('#addAppTags').autocomplete({
+    source: function(request, response) {
+        $.ajax({
+            url: "{% url 'tag_autocomplete' %}",
+            dataType: 'json',
+            data: {
+                term: request.term
+            },
+            success: function(data) {
+                response(data.tags);
+            },
+            error: function(xhr, status, error) {
+                console.error('Error:', error);
+            }
+        });
+    },
+    select: function(event, ui) {
+        if (!tags.includes(ui.item.value)) {
+            tags.push(ui.item.value);
+            $('#addAppTags').val('');
             updateTags();
         }
         return false;

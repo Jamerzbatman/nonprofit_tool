@@ -6,4 +6,6 @@ urlpatterns = [
     path('tag-autocomplete/', views.tag_autocomplete, name='tag_autocomplete'),
     path('list-website/', views.list_website, name='list_website'),
     path('list-logs/<int:website_id>/', views.list_logs, name='list_logs'),
+    path('list-apps/<int:website_id>/', views.list_app, name='list_app'),
+
 ]
