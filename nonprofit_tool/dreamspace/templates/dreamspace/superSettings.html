@@ -1,4 +1,17 @@
 <style>
+    /* Custom gray theme for list group */
+.list-group-gray .list-group-item {
+    background-color: transparent; /* Light gray background */
+    color: #495057; /* Darker text color */
+}
+
+.list-group-gray .list-group-item:hover {
+    background-color: transparent; /* Slightly darker gray on hover */
+}
+
+.list-group-gray .list-group-item:first-child {
+    border-top: none; /* Remove top border from the first item */
+}
 /* Ensure the dropdown is visible above the modal */
 .ui-autocomplete {
     z-index: 1050 !important; /* Bootstrap 5 modals use a z-index of 1050 */
@@ -137,10 +150,12 @@
           <button type="button" onclick="hideAddAppModal()" class="btn-close" aria-label="Close"></button>
         </div>
         <div class="modal-body">
-          <form id="addAppForm">
+          <form id="addApptoDreamSpaceForm">
+            {% csrf_token %}
+            <input type="hidden" id="hiddenWebsiteId" name="websiteId">
             <div class="mb-3">
               <label for="appName" class="form-label">App Name</label>
-              <input type="text" class="form-control" id="appName" placeholder="Enter app name">
+              <input type="text" class="form-control" name="appName" id="appName" placeholder="Enter app name">
             </div>
             <div class="mb-3">
                 <label for="addAppTags" class="form-label">
@@ -156,14 +171,35 @@
             </div>
             <div class="mb-3">
               <label for="appDescription" class="form-label">App Description</label>
-              <textarea class="form-control" id="appDescription" rows="3" placeholder="Enter app description"></textarea>
+              <textarea class="form-control" id="appDescription" name="appDescription" rows="3" placeholder="Enter app description"></textarea>
+            </div>
+            <div class="mb-3 form-check">
+                <input type="checkbox" class="form-check-input" id="isGlobalApp" name="isGlobal">
+                <label class="form-check-label" for="isGlobalApp">Is this app global (for all websites)?</label>
             </div>
             <button type="submit" class="btn btn-primary">Add</button>
           </form>
         </div>
       </div>
     </div>
-  </div>
+</div>
+
+
+<div class="modal fade" id="addGlobalApptoDreamSpaceModal" tabindex="-1" aria-labelledby="addGlobalApptoDreamSpaceModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="addGlobalApptoDreamSpaceModalLabel">Add Global App</h5>
+          <button type="button" onclick="hideAddGlobalAppModal()" class="btn-close" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+            <div id="listGlobalApptoDreamSpace"></div>
+        </div>
+      </div>
+    </div>
+</div>
+
+
 <script>
 
 document.getElementById('dreamspace-tab').addEventListener('click', function() {
@@ -397,6 +433,7 @@ function loadLogs(id) {
 
 function openEditTab(id) {
     const existingTab = document.getElementById(`edit-tab-${id}`);
+    
     if (existingTab) {
         // If the tab already exists, activate it
         const tab = new bootstrap.Tab(existingTab);
@@ -404,9 +441,9 @@ function openEditTab(id) {
         return;
     }
 
-    fetch(`/dreamspace/list-apps/${id}/`)
+    fetch(`/dreamspace/fetch-website/${id}/`)
         .then(response => response.json())
-        .then(data => {
+        .then(website_data => {
             const websiteTabs = document.getElementById('websiteTabs');
             const websiteTabContent = document.getElementById('websiteTabContent');
 
@@ -414,7 +451,7 @@ function openEditTab(id) {
             editTab.className = 'nav-item';
             editTab.innerHTML = `
                 <a class="nav-link" id="edit-tab-${id}" data-bs-toggle="tab" href="#edit-${id}" role="tab" aria-controls="edit-${id}" aria-selected="false">
-                    ${data.WebSite.name}
+                    ${website_data.name}
                     <button type="button" onclick="closeWebsiteTabContent(${id})" class="close ms-2" aria-label="Close" style="color: white; padding-left: 10px;" data-tab-id="${id}">
                         <span aria-hidden="true">&times;</span>
                     </button>
@@ -422,69 +459,277 @@ function openEditTab(id) {
             `;
             websiteTabs.appendChild(editTab);
 
-            const appTabPane = document.createElement('div');
-            appTabPane.className = 'tab-pane fade';
-            appTabPane.id = `edit-${id}`;
-            appTabPane.role = 'tabpanel';
-            appTabPane.ariaLabelledby = `edit-tab-${id}`;
+            const TabPane = document.createElement('div');
+            TabPane.className = 'tab-pane fade';
+            TabPane.id = `edit-${id}`;
+            TabPane.role = 'tabpanel';
+            TabPane.ariaLabelledby = `edit-tab-${id}`;
+            TabPane.style.margin = 0;
+            TabPane.style.padding = 0;
 
-            // Add "Add New App" button before listing apps
+
+            // Create the inner HTML for the app box
+            const editBox = document.createElement('div');
+            editBox.className = 'card mb-2';
+            editBox.style.border = 'none';
+            editBox.style.boxShadow = 'none';
+            editBox.style.width = '100%'; // Set the width to make it narrower
+            editBox.style.position = 'relative'; // Enable positioning of the hamburger button
+
+            editBox.innerHTML = `
+                <div class="card-body" >
+                    <ul class="nav nav-tabs mt-3" id="appTab-${id}" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <a class="nav-link active" id="status-tab-${id}" data-bs-toggle="tab" href="#status-${id}" role="tab" aria-controls="status-${id}" aria-selected="true">Status</a>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <a class="nav-link" id="frontend-tab-${id}" data-bs-toggle="tab" href="#frontend-${id}" role="tab" aria-controls="frontend-${id}" aria-selected="false">Frontend</a>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <a class="nav-link" id="backend-tab-${id}" data-bs-toggle="tab" href="#backend-${id}" role="tab" aria-controls="backend-${id}" aria-selected="false">Backend</a>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <a class="nav-link" id="settings-tab-${id}" data-bs-toggle="tab" href="#settings-${id}" role="tab" aria-controls="settings-${id}" aria-selected="false">Settings</a>
+                        </li>
+                    </ul>
+                    <div class="tab-content mt-3">
+                        <div class="tab-pane fade show active" id="status-${id}" role="tabpanel" aria-labelledby="status-tab-${id}">
+                            <div class="container mt-3">
+                                <div class="row">
+            
+                                    <div class="col-12 mb-3">
+                                        <h2>${website_data.name}</h2>
+                                        <p class="text-muted">${website_data.description}</p>
+                                        ${website_data.tags.length > 0 ? website_data.tags.map(tag => `<span class="badge bg-secondary m-1">${tag}</span>`).join('') : ''}                                    </div>
+                                </div>
+                                <div class="row">
+                                    <!-- Website Details -->
+                                    <div class="col-md-6 mb-3">
+                                        <div class="card">
+                                            <div class="card-body">
+                                                <h5 class="card-title">Details</h5>
+                                                <ul class="list-group list-group-flush list-group-gray">                                                   
+                                                    <li class="list-group-item"><strong>Created At:</strong> ${new Date(website_data.created_at).toLocaleString()}</li>
+                                                    <li class="list-group-item"><strong>Updated At:</strong> ${new Date(website_data.updated_at).toLocaleString()}</li>
+                                                    <li class="list-group-item" style="background-color: ${website_data.is_active ? '#d4edda' : '#f8d7da'}; color: ${website_data.is_active ? '#155724' : '#721c24'};">
+                                                        <strong>Status:</strong> ${website_data.is_active ? 'Active' : 'Inactive'}
+                                                    </li>                                          
+                                                </ul>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="tab-pane fade" id="frontend-${id}" role="tabpanel" aria-labelledby="frontend-tab-${id}">
+                            <!-- Frontend content goes here -->
+                            Frontend content for ${website_data.name}
+                        </div>
+                        <div class="tab-pane fade" id="backend-${id}" role="tabpanel" aria-labelledby="backend-tab-${id}">
+                            <!-- Backend content goes here -->
+                            <div id="backend-content-${id}"></div>
+                            <!-- You will add backend-specific content here -->
+                        </div>
+                        <div class="tab-pane fade" id="settings-${id}" role="tabpanel" aria-labelledby="settings-tab-${id}">
+                            <!-- Settings content goes here -->
+                            Settings content for ${website_data.name}
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            TabPane.appendChild(editBox);
+            websiteTabContent.appendChild(TabPane);
+
+            // Activate the new tab
+            const tab = new bootstrap.Tab(editTab.querySelector('a'));
+            tab.show();
+
+            // Add event listener to load backend content when backend tab is shown
+            document.querySelector(`#backend-tab-${id}`).addEventListener('shown.bs.tab', () => {
+                list_Apps(id);
+            });
+        })
+        .catch(error => console.error('Error fetching apps:', error));
+}
+
+function list_Apps(WebSite_id) {
+    fetch(`/dreamspace/list-apps/${WebSite_id}/`)
+        .then(response => response.json())
+        .then(app_data => {
+            const websiteTabContent = document.getElementById(`backend-content-${WebSite_id}`);
+            websiteTabContent.style.display = 'flex';
+            websiteTabContent.style.flexDirection = 'column'; // Stack items vertically
+            websiteTabContent.style.gap = '10px'; // Optional: spacing between elements
+
+            if (!websiteTabContent) {
+                console.error(`Element with id backend-content-${WebSite_id} not found.`);
+                return;
+            }
+
+            // Clear any previous content
+            websiteTabContent.innerHTML = '';
+
+            // Create a container for the button
+            const buttonContainer = document.createElement('div');
+            buttonContainer.id = 'button-container';
+            buttonContainer.style.marginBottom = '10px'; // Space between button and apps
+
             const addAppButton = document.createElement('button');
-            addAppButton.className = 'btn btn-primary mb-3';
-            addAppButton.innerHTML = 'Add New App';
+            addAppButton.className = 'btn btn-primary';
+            addAppButton.innerHTML = 'Add New Function';
             addAppButton.onclick = function() {
+                $('#updateAddAppTagsContainer').empty();
+                document.getElementById('hiddenWebsiteId').value = `${WebSite_id}`;
                 const modal = new bootstrap.Modal(document.getElementById('addApptoDreamSpaceModal'));
                 modal.show();
             };
 
-            appTabPane.appendChild(addAppButton);
+            // Append both buttons to the button container
+            buttonContainer.appendChild(addAppButton);
+            websiteTabContent.appendChild(buttonContainer);
+
+            // Create a container for the apps
+            const appsContainer = document.createElement('div');
+            appsContainer.style.display = 'flex';
+            appsContainer.style.flexWrap = 'wrap';
+            appsContainer.style.gap = '10px';
+
+            // Function to handle app clicks
+            function handleAppClick(app_id, WebSite_id) {
+                // Remove the button container
+                const buttonContainer = document.getElementById('button-container');
+                if (buttonContainer) {
+                    buttonContainer.remove();
+                }
+                
+                // Hide all app cards
+                appsContainer.style.display = 'none';
+
+                // Create and display the app name only
+                const appNameContainer = document.createElement('div');
+                appNameContainer.className = 'app-name-container';
+                appNameContainer.style.textAlign = 'center';
+                appNameContainer.style.marginTop = '20px';
+
+                list_Functions_for_app(app_id, WebSite_id)
+
+
+            }
 
             // Listing existing apps
-            data.apps.forEach(app => {
+            app_data.apps.forEach(app => {
                 const appBox = document.createElement('div');
                 appBox.className = 'card mb-2';
-                appBox.style.width = '500px'; // Set the width to make it narrower
+                appBox.style.flex = '1 1 calc(33.33% - 10px)';
+                appBox.style.maxWidth = '500px'; // Set the maximum width of each card
                 appBox.style.position = 'relative'; // Enable positioning of the hamburger button
                 appBox.style.border = app.error ? '2px solid red' : (app.active ? '2px solid green' : '2px solid orange');
                 appBox.innerHTML = `
                     <div class="card-body">
                         <div class="d-flex justify-content-between align-items-center">
                             <h5 class="card-title" style="font-weight: bold;">${app.name}</h5>
-                            <!-- Hamburger Button at the top-right corner -->
-                            <div class="dropdown" style="position: absolute; top: 10px; right: 10px;">
-                                <button class="btn btn-secondary dropdown-toggle" type="button" id="dropdownMenuButton-${app.id}" data-bs-toggle="dropdown" aria-expanded="false">
-                                    &#9776; <!-- Three lines symbol -->
-                                </button>
-                                <ul class="dropdown-menu" aria-labelledby="dropdownMenuButton-${app.id}">
-                                    <li>
-                                        <button class="dropdown-item" type="button" data-app-id="${app.id}" onclick="openEditTab(${app.id}, '${app.name}')">
-                                            Edit
-                                        </button>
-                                    </li>
-                                    <li>
-                                        <button class="dropdown-item" type="button" data-app-id="${app.id}" onclick="Logs(${app.id}, '${app.name}')">
-                                            Logs
-                                        </button>
-                                    </li>
-                                </ul>
-                            </div>
                         </div>
                         <p class="card-text" style="color: #6c757d; font-size: 14px; margin-top: 10px;">${app.description}</p>
                     </div>
                 `;
 
-                appTabPane.appendChild(appBox);
+                // Add click event to appBox
+                appBox.onclick = function() {
+                    handleAppClick(app.id, WebSite_id);
+                };
+
+                appsContainer.appendChild(appBox);
             });
 
-            websiteTabContent.appendChild(appTabPane);
-
-            // Activate the new tab
-            const tab = new bootstrap.Tab(editTab.querySelector('a'));
-            tab.show();
+            websiteTabContent.appendChild(appsContainer);
         })
-        .catch(error => console.error('Error fetching apps:', error));
+        .catch(error => console.error('Error fetching app data:', error));
 }
+function list_Functions_for_app(app_id, WebSite_id) {
+    fetch(`/dreamspace/list-functions/${app_id}/`)
+        .then(response => response.json())
+        .then(function_data => {
+            const websiteTabContent = document.getElementById(`backend-content-${WebSite_id}`);
+            websiteTabContent.style.display = 'flex';
+            websiteTabContent.style.flexDirection = 'column'; // Stack items vertically
+            websiteTabContent.style.gap = '10px'; // Optional: spacing between elements
 
+            if (!websiteTabContent) {
+                console.error(`Element with id backend-content-${WebSite_id} not found.`);
+                return;
+            }
+
+            // Clear any previous content
+            websiteTabContent.innerHTML = '';
+
+            // Create a container for the button
+            const buttonContainer = document.createElement('div');
+            buttonContainer.id = 'button-container';
+            buttonContainer.style.marginBottom = '10px'; // Space between button and apps
+
+            const addAppButton = document.createElement('button');
+            addAppButton.className = 'btn btn-primary';
+            addAppButton.innerHTML = 'Add New Function';
+            addAppButton.onclick = function() {
+                $('#updateAddAppTagsContainer').empty();
+                document.getElementById('hiddenWebsiteId').value = `${WebSite_id}`;
+                const modal = new bootstrap.Modal(document.getElementById('addApptoDreamSpaceModal'));
+                modal.show();
+            };
+            // Append both buttons to the button container
+            buttonContainer.appendChild(addAppButton);
+            websiteTabContent.appendChild(buttonContainer);
+
+            // Create a container for the apps
+            const functionsContainer = document.createElement('div');
+            functionsContainer.style.display = 'flex';
+            functionsContainer.style.flexWrap = 'wrap';
+            functionsContainer.style.gap = '10px';
+
+            // Function to handle app clicks
+            function handleAppClick(app_id, WebSite_id) {
+                // Remove the button container
+                const buttonContainer = document.getElementById('button-container');
+                if (buttonContainer) {
+                    buttonContainer.remove();
+                }
+                
+                // Hide all app cards
+                functionsContainer.style.display = 'none';
+
+                list_Functions_for_app(app_id, WebSite_id)
+            }
+
+            // Listing existing apps
+            function_data.functions.forEach(functions => {
+                const functionsBox = document.createElement('div');
+                functionsBox.className = 'card mb-2';
+                functionsBox.style.flex = '1 1 calc(33.33% - 10px)';
+                functionsBox.style.maxWidth = '500px'; // Set the maximum width of each card
+                functionsBox.style.position = 'relative'; // Enable positioning of the hamburger button
+                functionsBox.style.border = functions.error ? '2px solid red' : (functions.active ? '2px solid green' : '2px solid orange');
+                functionsBox.innerHTML = `
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h5 class="card-title" style="font-weight: bold;">${functions.name}</h5>
+                        </div>
+                        <p class="card-text" style="color: #6c757d; font-size: 14px; margin-top: 10px;">${functions.description}</p>
+                    </div>
+                `;
+
+                // Add click event to functionsBox
+                functionsBox.onclick = function() {
+                    handleAppClick(app.id, WebSite_id);
+                };
+
+                functionsContainer.appendChild(functionsBox);
+            });
+
+            websiteTabContent.appendChild(functionsContainer);
+        })
+        .catch(error => console.error('Error fetching app data:', error));
+}
 
 // Function to hide the modal
 function hideAddAppModal() {
@@ -501,6 +746,78 @@ function hideAddAppModal() {
         console.info("Modal is already hidden");
     }
 }
+function listGlobalAppsForWebsite(WebSite_id) {
+    fetch(`/dreamspace/list-global-apps/${WebSite_id}`) // Fetching global apps
+        .then(response => response.json())
+        .then(data => {
+            const global_apps = data.global_apps; // Access the global_apps array from the response
+            
+            const globalAppContainer = document.getElementById('listGlobalApptoDreamSpace');
+            if (!globalAppContainer) {
+                console.error('Global app container not found.');
+                return;
+            }
+
+            // Clear any previous content
+            globalAppContainer.innerHTML = '';
+
+            // Display global apps as buttons
+            global_apps.forEach(app => {
+                const appButton = document.createElement('button');
+                appButton.className = 'btn btn-secondary mb-2'; // Styling the button
+                appButton.innerHTML = `${app.name}`;
+                appButton.onclick = function() {
+                    // Call the function to save the global app to the website
+                    addGlobalAppToWebsite(WebSite_id, app.id);
+                };
+
+                globalAppContainer.appendChild(appButton);
+            });
+        })
+        .catch(error => console.error('Error fetching global apps:', error));
+}
+
+// Function to add the global app to the specific website
+function addGlobalAppToWebsite(WebSite_id, App_id) {
+    fetch(`/dreamspace/add-app-to-website/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+        },
+        body: JSON.stringify({ website_id: WebSite_id, app_id: App_id })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+
+            list_Apps(WebSite_id)
+            hideAddGlobalAppModal();
+            alertMessage("Global App Added to DreamSpace Successfullly", 'alert alert-success');
+        } else {
+            alert('Error adding app to the website.');
+        }
+    })
+    .catch(error => console.error('Error adding app to website:', error));
+}
+
+
+// Function to hide the modal
+function hideAddGlobalAppModal() {
+    const modalElement = document.getElementById('addGlobalApptoDreamSpaceModal');
+    const modal = new bootstrap.Modal(modalElement);
+
+    if (modalElement.classList.contains('show')) {
+        modal.hide(); // Use Bootstrap's hide method
+        modalElement.classList.remove('show'); // Ensure 'show' class is removed
+        modalElement.style.display = 'none'; // Force-hide the modal if it's stuck
+        document.body.classList.remove('modal-open'); // Remove 'modal-open' class from body
+        document.querySelector('.modal-backdrop')?.remove(); // Remove backdrop if present
+    } else {
+        console.info("Modal is already hidden");
+    }
+}
+
 
 function closeWebsiteTabContent(id) {
     // Remove the tab link
@@ -604,16 +921,18 @@ $('#AddDreamSpaceTags').autocomplete({
     }
 });
 
+let AddAppTags = [];
+
 // Function to update the hidden input and display tags
 function updateAddAppTags() {
-    $('#addApp-tags-input').val(tags.join(','));
+    $('#addApp-tags-input').val(AddAppTags.join(','));
     
     // Clear the existing tags container
     $('#updateAddAppTagsContainer').empty();
     
     // Append each tag to the tags container
-    tags.forEach(tag => {
-        $('#updateAddAppTagsContainer').append(`<span class="badge bg-primary m-1">${tag}</span>`);
+    AddAppTags.forEach(tag => {
+        $('#updateAddAppTagsContainer').append(`<span class="badge bg-secondary m-1">${tag}</span>`);
     });
 }
 
@@ -622,8 +941,8 @@ $('#addAppTags').on('keydown', function(e) {
     if (e.key === 'Enter') {
         e.preventDefault();
         const input = $(this).val().trim();
-        if (input !== '' && !tags.includes(input)) {
-            tags.push(input);
+        if (input !== '' && !AddAppTags.includes(input)) {
+            AddAppTags.push(input);
             $(this).val('');
             updateAddAppTags();
         }
@@ -634,26 +953,27 @@ $('#addAppTags').on('keydown', function(e) {
 $('#addAppTags').autocomplete({
     source: function(request, response) {
         $.ajax({
-            url: "{% url 'tag_autocomplete' %}",
+            url: "{% url 'tag_autocomplete' %}", // Ensure this URL is correct
             dataType: 'json',
             data: {
                 term: request.term
             },
             success: function(data) {
-                response(data.tags);
+                response(data.tags); // Ensure `data.tags` is the correct path
             },
             error: function(xhr, status, error) {
                 console.error('Error:', error);
+                // Optionally show a message to the user
             }
         });
     },
     select: function(event, ui) {
-        if (!tags.includes(ui.item.value)) {
-            tags.push(ui.item.value);
+        if (!AddAppTags.includes(ui.item.value)) {
+            AddAppTags.push(ui.item.value);
             $('#addAppTags').val('');
-            updateTags();
+            updateAddAppTags(); // Update the tags container
         }
-        return false;
+        return false; // Prevents the value from being entered in the input field
     }
 });
 
@@ -692,6 +1012,38 @@ document.getElementById('AddDreamSpaceForm').addEventListener('submit', function
     })
     
     .catch(error => alertMessage("Error: " + (error || "Failed to save Website"), 'alert alert-danger'));
+
+});
+
+document.getElementById('addApptoDreamSpaceForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const form = e.target;
+    const formData = new FormData(form);
+    
+    fetch("{% url 'add_app_to_dreamspace' %}", {
+        method: "POST",
+        headers: {
+            'X-CSRFToken': formData.get('csrfmiddlewaretoken'),
+        },
+        body: formData,
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            list_Apps(data.webSite_id)
+            hideAddAppModal();
+            alertMessage("App Added to DreamSpace Successfullly", 'alert alert-success');
+        } else {            
+            if (data.errors) {
+                alertMessage("Error: " + (data.errors || "Failed to App Added to DreamSpace"), 'alert alert-danger');
+            } else if (data.error) {
+                alertMessage("Error: " + (data.error || "Failed to App Added to DreamSpace"), 'alert alert-danger');
+            }
+        }
+    })
+    
+    .catch(error => alertMessage("Error: " + (error || "Failed to App Added to DreamSpace"), 'alert alert-danger'));
 
 });
 

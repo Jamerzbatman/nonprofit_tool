@@ -68,13 +68,70 @@ class App(models.Model):
     description = models.TextField()
     tags = models.ManyToManyField(Tag)
     website_relation = models.ManyToManyField('WebSite', related_name='apps', blank=True)
+    is_global = models.BooleanField(default=False)  # Field to indicate if the app is available for all websites
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     is_active = models.BooleanField(default=True)
 
     def __str__(self):
         return self.name
+
+    def is_for_all_websites(self):
+        """
+        Checks if the app is global (i.e., available for all websites).
+        """
+        return self.is_global or not self.website_relation.exists()
     
+class Function(models.Model):
+    name = models.CharField(max_length=255)
+    packages = models.TextField(blank=True, null=True)
+    python = models.TextField(blank=True, null=True)
+    description = models.TextField(blank=True, null=True)
+    tags = models.ManyToManyField(Tag)
+    app_relation = models.ForeignKey(App, on_delete=models.CASCADE)
+    url = models.CharField(max_length=255, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return self.name
+    
+    def save(self, *args, **kwargs):
+        # Check if we're updating an existing function
+        if self.pk and self.python:
+            original = Function.objects.get(pk=self.pk)
+            # Ensure the original python code is not null and has changed
+            if original.python is not None and original.python != self.python:
+                # Only create a version if it's not the first save and original.python is not null
+                FunctionVersion.objects.create(
+                    function=self,
+                    packages=original.packages,
+                    python=original.python,
+                    version=original.versions.count() + 1
+                )
+        super().save(*args, **kwargs)
+
+class FunctionVersion(models.Model):
+    function = models.ForeignKey(Function, related_name='versions', on_delete=models.CASCADE)
+    version = models.IntegerField()
+    packages = models.TextField()
+    python = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('function', 'version')
+        ordering = ['-version']
+
+    def save(self, *args, **kwargs):
+        if not self.version:
+            # Automatically set the version number
+            max_version = FunctionVersion.objects.filter(function_id=self.function_id).aggregate(models.Max('version'))['version__max'] or 0
+            self.version = max_version + 1
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f'{self.function.name} - v{self.version}'
+
 
 class Log(models.Model):
     message = models.TextField()  # The actual error message
@@ -84,6 +141,6 @@ class Log(models.Model):
     resolved = models.BooleanField(default=False)  # If the error has been resolved
     website_relation = models.ForeignKey(WebSite, on_delete=models.CASCADE)
     app_relation = models.ForeignKey(App, on_delete=models.CASCADE, blank=True, null=True)
-
+    function_relation = models.ForeignKey(Function, on_delete=models.CASCADE, blank=True, null=True)
     def __str__(self):
         return f"{self.type} - {self.message[:50]}"
