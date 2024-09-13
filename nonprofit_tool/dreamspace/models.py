@@ -88,6 +88,8 @@ class Function(models.Model):
     python = models.TextField(blank=True, null=True)
     description = models.TextField(blank=True, null=True)
     tags = models.ManyToManyField(Tag)
+    is_global = models.BooleanField(default=False)
+    is_active = models.BooleanField(default=True)
     app_relation = models.ForeignKey(App, on_delete=models.CASCADE)
     url = models.CharField(max_length=255, null=True)
     created_at = models.DateTimeField(auto_now_add=True)

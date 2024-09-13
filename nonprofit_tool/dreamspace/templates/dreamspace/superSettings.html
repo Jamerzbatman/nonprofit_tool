@@ -183,7 +183,48 @@
       </div>
     </div>
 </div>
-
+<!-- addFunctiontoAppModal -->
+<div class="modal fade" id="addFunctiontoAppModal" tabindex="-1" aria-labelledby="addFunctiontoAppModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="addFunctiontoAppModalLabel">Add New Function</h5>
+          <button type="button" onclick="hideaddFunctiontoAppModal()" class="btn-close" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <form id="addFunctiontoAppForm">
+            {% csrf_token %}
+            <input type="hidden" id="hiddenAppId" name="appId">
+            <div class="mb-3">
+              <label for="functionName" class="form-label">Function Name</label>
+              <input type="text" class="form-control" name="functionName" id="functionName" placeholder="Enter function name">
+            </div>
+            <div class="mb-3">
+                <label for="addAppTags" class="form-label">
+                    Tags
+                    <span class="tooltip-container">
+                        <i class="fas fa-question-circle tooltip-icon"></i>
+                        <div class="tooltip-text">Tags help categorize and filter ideas based on themes, topics, or keywords.</div>
+                    </span>
+                </label>
+                <input type="text" class="form-control" id="addFunctionTags" placeholder="Start typing to search tags...">
+                <input type="hidden" id="addFunction-tags-input" name="tags">
+                <div id="updateAddFunctionTagsContainer"></div>
+            </div>
+            <div class="mb-3">
+              <label for="functionDescription" class="form-label">App Description</label>
+              <textarea class="form-control" id="functionDescription" name="Description" rows="3" placeholder="Enter app description"></textarea>
+            </div>
+            <div class="mb-3 form-check">
+                <input type="checkbox" class="form-check-input" id="isGlobalFunction" name="isGlobal">
+                <label class="form-check-label" for="isGlobalFunction">Is this app global (for all websites)?</label>
+            </div>
+            <button type="submit" class="btn btn-primary">Add</button>
+          </form>
+        </div>
+      </div>
+    </div>
+</div>
 
 <div class="modal fade" id="addGlobalApptoDreamSpaceModal" tabindex="-1" aria-labelledby="addGlobalApptoDreamSpaceModalLabel" aria-hidden="true">
     <div class="modal-dialog">
@@ -577,7 +618,7 @@ function list_Apps(WebSite_id) {
 
             const addAppButton = document.createElement('button');
             addAppButton.className = 'btn btn-primary';
-            addAppButton.innerHTML = 'Add New Function';
+            addAppButton.innerHTML = 'Add New App';
             addAppButton.onclick = function() {
                 $('#updateAddAppTagsContainer').empty();
                 document.getElementById('hiddenWebsiteId').value = `${WebSite_id}`;
@@ -673,8 +714,8 @@ function list_Functions_for_app(app_id, WebSite_id) {
             addAppButton.innerHTML = 'Add New Function';
             addAppButton.onclick = function() {
                 $('#updateAddAppTagsContainer').empty();
-                document.getElementById('hiddenWebsiteId').value = `${WebSite_id}`;
-                const modal = new bootstrap.Modal(document.getElementById('addApptoDreamSpaceModal'));
+                document.getElementById('hiddenAppId').value = `${app_id}`;
+                const modal = new bootstrap.Modal(document.getElementById('addFunctiontoAppModal'));
                 modal.show();
             };
             // Append both buttons to the button container
@@ -729,6 +770,21 @@ function list_Functions_for_app(app_id, WebSite_id) {
             websiteTabContent.appendChild(functionsContainer);
         })
         .catch(error => console.error('Error fetching app data:', error));
+}
+// Function to hide the modal
+function hideaddFunctiontoAppModal() {
+    const modalElement = document.getElementById('addFunctiontoAppModal');
+    const modal = new bootstrap.Modal(modalElement);
+
+    if (modalElement.classList.contains('show')) {
+        modal.hide(); // Use Bootstrap's hide method
+        modalElement.classList.remove('show'); // Ensure 'show' class is removed
+        modalElement.style.display = 'none'; // Force-hide the modal if it's stuck
+        document.body.classList.remove('modal-open'); // Remove 'modal-open' class from body
+        document.querySelector('.modal-backdrop')?.remove(); // Remove backdrop if present
+    } else {
+        console.info("Modal is already hidden");
+    }
 }
 
 // Function to hide the modal
