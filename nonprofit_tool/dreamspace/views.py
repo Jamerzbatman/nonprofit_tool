@@ -48,6 +48,7 @@ def list_app(request, website_id):
 def list_functions(request, app_id):
     # Ensure website exists
     function_app = App.objects.filter(id=app_id).first()
+
     
     if not function_app:
         return JsonResponse({'error': 'App not found'}, status=404)
@@ -72,8 +73,9 @@ def list_functions(request, app_id):
         }
         for function in functions
     ]
-        
-    return JsonResponse({'functions': function_data})
+    app_name = function_app.name.replace('_', ' ').title()
+    
+    return JsonResponse({'functions': function_data, 'appName': app_name})
 
 
 

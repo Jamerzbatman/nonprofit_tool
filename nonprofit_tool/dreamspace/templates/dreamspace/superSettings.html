@@ -688,88 +688,124 @@ function list_Apps(WebSite_id) {
         .catch(error => console.error('Error fetching app data:', error));
 }
 function list_Functions_for_app(app_id, WebSite_id) {
+
     fetch(`/dreamspace/list-functions/${app_id}/`)
-        .then(response => response.json())
-        .then(function_data => {
-            const websiteTabContent = document.getElementById(`backend-content-${WebSite_id}`);
-            websiteTabContent.style.display = 'flex';
-            websiteTabContent.style.flexDirection = 'column'; // Stack items vertically
-            websiteTabContent.style.gap = '10px'; // Optional: spacing between elements
+    .then(response => response.json())
+    .then(function_data => {
+        const websiteTabContent = document.getElementById(`backend-content-${WebSite_id}`);
+        websiteTabContent.style.display = 'flex';
+        websiteTabContent.style.flexDirection = 'column'; // Stack items vertically
+        websiteTabContent.style.gap = '10px'; // Optional: spacing between elements
 
-            if (!websiteTabContent) {
-                console.error(`Element with id backend-content-${WebSite_id} not found.`);
-                return;
+        if (!websiteTabContent) {
+            console.error(`Element with id backend-content-${WebSite_id} not found.`);
+            return;
+        }
+
+        // Clear any previous content
+        websiteTabContent.innerHTML = '';
+
+        // Create a container for the button
+        const buttonContainer = document.createElement('div');
+        buttonContainer.id = 'button-container';
+        buttonContainer.style.display = 'flex'; // Make the container a flexbox
+        buttonContainer.style.justifyContent = 'space-between'; // Ensure both elements are on the same line
+        buttonContainer.style.marginBottom = '10px'; // Space between button and apps
+
+        // Create the "Add New Function" button
+        const addAppButton = document.createElement('button');
+        addAppButton.className = 'btn btn-primary';
+        addAppButton.innerHTML = 'Add New Function';
+        addAppButton.onclick = function() {
+            $('#updateAddAppTagsContainer').empty();
+            document.getElementById('hiddenAppId').value = `${app_id}`;
+            const modal = new bootstrap.Modal(document.getElementById('addFunctiontoAppModal'));
+            modal.show();
+        };
+
+        // Create the right-side navigation for apps
+        const appNav = document.createElement('nav');
+        appNav.style.display = 'flex'; // Ensure both items are on the same line
+        appNav.style.alignItems = 'center'; // Vertically center the items
+        appNav.style.overflowX = 'auto'; // Allow horizontal scrolling if needed
+        appNav.style.marginLeft = '20px'; // Add space between button and the navigation
+
+        // Create a clickable link or button that triggers list_Apps(WebSite_id)
+        const appNavButton = document.createElement('button');
+        appNavButton.className = 'btn btn-link'; // Style it as a link
+        appNavButton.innerHTML = '<h5>Apps</h5>';
+        appNavButton.onclick = function() {
+            list_Apps(WebSite_id); // Call the function when clicked
+        };
+
+        // Create a span to display the app name, not clickable
+        const appNameSpan = document.createElement('span');
+        appNameSpan.style.flexGrow = '1'; // Allow the app name to grow within the available space
+        appNameSpan.style.marginLeft = '1px'; // Add space between "Apps" and the app name
+        appNameSpan.style.whiteSpace = 'nowrap'; // Prevent wrapping of the text
+        appNameSpan.style.overflow = 'hidden'; // Hide any overflow if the text is too long
+        appNameSpan.style.textOverflow = 'ellipsis'; // Add ellipsis if the text is too long
+        appNameSpan.innerHTML = `<h5>/ ${function_data.appName}</h5>`;
+
+        // Append the button to the appNav
+        appNav.appendChild(appNavButton);
+        appNav.appendChild(appNameSpan);
+
+        // Append both to the button container
+        buttonContainer.appendChild(addAppButton);
+        buttonContainer.appendChild(appNav);
+
+        // Append the button container to the website content
+        websiteTabContent.appendChild(buttonContainer);
+
+        // Create a container for the apps
+        const functionsContainer = document.createElement('div');
+        functionsContainer.style.display = 'flex';
+        functionsContainer.style.flexWrap = 'wrap';
+        functionsContainer.style.gap = '10px';
+
+        // Function to handle app clicks
+        function handleAppClick(app_id, WebSite_id) {
+            // Remove the button container
+            const buttonContainer = document.getElementById('button-container');
+            if (buttonContainer) {
+                buttonContainer.remove();
             }
+            
+            // Hide all app cards
+            functionsContainer.style.display = 'none';
 
-            // Clear any previous content
-            websiteTabContent.innerHTML = '';
+            list_Functions_for_app(app_id, WebSite_id)
+        }
 
-            // Create a container for the button
-            const buttonContainer = document.createElement('div');
-            buttonContainer.id = 'button-container';
-            buttonContainer.style.marginBottom = '10px'; // Space between button and apps
-
-            const addAppButton = document.createElement('button');
-            addAppButton.className = 'btn btn-primary';
-            addAppButton.innerHTML = 'Add New Function';
-            addAppButton.onclick = function() {
-                $('#updateAddAppTagsContainer').empty();
-                document.getElementById('hiddenAppId').value = `${app_id}`;
-                const modal = new bootstrap.Modal(document.getElementById('addFunctiontoAppModal'));
-                modal.show();
-            };
-            // Append both buttons to the button container
-            buttonContainer.appendChild(addAppButton);
-            websiteTabContent.appendChild(buttonContainer);
-
-            // Create a container for the apps
-            const functionsContainer = document.createElement('div');
-            functionsContainer.style.display = 'flex';
-            functionsContainer.style.flexWrap = 'wrap';
-            functionsContainer.style.gap = '10px';
-
-            // Function to handle app clicks
-            function handleAppClick(app_id, WebSite_id) {
-                // Remove the button container
-                const buttonContainer = document.getElementById('button-container');
-                if (buttonContainer) {
-                    buttonContainer.remove();
-                }
-                
-                // Hide all app cards
-                functionsContainer.style.display = 'none';
-
-                list_Functions_for_app(app_id, WebSite_id)
-            }
-
-            // Listing existing apps
-            function_data.functions.forEach(functions => {
-                const functionsBox = document.createElement('div');
-                functionsBox.className = 'card mb-2';
-                functionsBox.style.flex = '1 1 calc(33.33% - 10px)';
-                functionsBox.style.maxWidth = '500px'; // Set the maximum width of each card
-                functionsBox.style.position = 'relative'; // Enable positioning of the hamburger button
-                functionsBox.style.border = functions.error ? '2px solid red' : (functions.active ? '2px solid green' : '2px solid orange');
-                functionsBox.innerHTML = `
-                    <div class="card-body">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <h5 class="card-title" style="font-weight: bold;">${functions.name}</h5>
-                        </div>
-                        <p class="card-text" style="color: #6c757d; font-size: 14px; margin-top: 10px;">${functions.description}</p>
+        // Listing existing apps
+        function_data.functions.forEach(functions => {
+            const functionsBox = document.createElement('div');
+            functionsBox.className = 'card mb-2';
+            functionsBox.style.flex = '1 1 calc(33.33% - 10px)';
+            functionsBox.style.maxWidth = '500px'; // Set the maximum width of each card
+            functionsBox.style.position = 'relative'; // Enable positioning of the hamburger button
+            functionsBox.style.border = functions.error ? '2px solid red' : (functions.active ? '2px solid green' : '2px solid orange');
+            functionsBox.innerHTML = `
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="card-title" style="font-weight: bold;">${functions.name}</h5>
                     </div>
-                `;
+                    <p class="card-text" style="color: #6c757d; font-size: 14px; margin-top: 10px;">${functions.description}</p>
+                </div>
+            `;
 
-                // Add click event to functionsBox
-                functionsBox.onclick = function() {
-                    handleAppClick(app.id, WebSite_id);
-                };
+            // Add click event to functionsBox
+            functionsBox.onclick = function() {
+                handleAppClick(app.id, WebSite_id);
+            };
 
-                functionsContainer.appendChild(functionsBox);
-            });
+            functionsContainer.appendChild(functionsBox);
+        });
 
-            websiteTabContent.appendChild(functionsContainer);
-        })
-        .catch(error => console.error('Error fetching app data:', error));
+        websiteTabContent.appendChild(functionsContainer);
+    })
+    .catch(error => console.error('Error fetching app data:', error));
 }
 // Function to hide the modal
 function hideaddFunctiontoAppModal() {
