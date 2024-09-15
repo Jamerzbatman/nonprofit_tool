@@ -629,6 +629,7 @@ function list_Apps(WebSite_id) {
             const addGolbalAppButton = document.createElement('button');
             addGolbalAppButton.className = 'btn btn-primary';
             addGolbalAppButton.innerHTML = 'Gobal Apps';
+            addGolbalAppButton.style.marginLeft = '5px';
             addGolbalAppButton.onclick = function() {
                 listGlobalAppsForWebsite(WebSite_id);
             };
