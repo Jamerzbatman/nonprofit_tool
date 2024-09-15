@@ -692,71 +692,76 @@ function list_Functions_for_app(app_id, WebSite_id) {
     fetch(`/dreamspace/list-functions/${app_id}/`)
     .then(response => response.json())
     .then(function_data => {
-        const websiteTabContent = document.getElementById(`backend-content-${WebSite_id}`);
-        websiteTabContent.style.display = 'flex';
-        websiteTabContent.style.flexDirection = 'column'; // Stack items vertically
-        websiteTabContent.style.gap = '10px'; // Optional: spacing between elements
-
-        if (!websiteTabContent) {
-            console.error(`Element with id backend-content-${WebSite_id} not found.`);
-            return;
-        }
+        const appTabContent = document.getElementById(`backend-content-${WebSite_id}`);
 
         // Clear any previous content
-        websiteTabContent.innerHTML = '';
+        appTabContent.innerHTML = '';
 
-        // Create a container for the button
+        // Create a container for the buttons
         const buttonContainer = document.createElement('div');
-        buttonContainer.id = 'button-container';
+        buttonContainer.id = `button-container-${WebSite_id}`;
         buttonContainer.style.display = 'flex'; // Make the container a flexbox
-        buttonContainer.style.justifyContent = 'space-between'; // Ensure both elements are on the same line
-        buttonContainer.style.marginBottom = '10px'; // Space between button and apps
+        buttonContainer.style.alignItems = 'center'; // Align items in the center
+        buttonContainer.style.marginBottom = '10px'; // Space between button container and other elements
+        buttonContainer.style.gap = '2px'; // Space between buttons
 
         // Create the "Add New Function" button
-        const addAppButton = document.createElement('button');
-        addAppButton.className = 'btn btn-primary';
-        addAppButton.innerHTML = 'Add New Function';
-        addAppButton.onclick = function() {
+        const addfunctionButton = document.createElement('button');
+        addfunctionButton.className = 'btn btn-primary';
+        addfunctionButton.innerHTML = 'Add Function';
+        addfunctionButton.onclick = function() {
             $('#updateAddAppTagsContainer').empty();
             document.getElementById('hiddenAppId').value = `${app_id}`;
             const modal = new bootstrap.Modal(document.getElementById('addFunctiontoAppModal'));
             modal.show();
         };
 
+        // Create the "Add New Model" button
+        const addModelButton = document.createElement('button');
+        addModelButton.className = 'btn btn-secondary'; // Adjust the class if needed for styling
+        addModelButton.innerHTML = 'Add Model';
+        addModelButton.onclick = function() {
+            $('#updateAddModelTagsContainer').empty();
+            document.getElementById('hiddenModelId').value = `${app_id}`; // Adjust the ID as needed
+            const modal = new bootstrap.Modal(document.getElementById('addModeltoAppModal'));
+            modal.show();
+        };
+
         // Create the right-side navigation for apps
-        const appNav = document.createElement('nav');
-        appNav.style.display = 'flex'; // Ensure both items are on the same line
-        appNav.style.alignItems = 'center'; // Vertically center the items
-        appNav.style.overflowX = 'auto'; // Allow horizontal scrolling if needed
-        appNav.style.marginLeft = '20px'; // Add space between button and the navigation
+        const Nav = document.createElement('nav');
+        Nav.style.display = 'flex'; // Ensure both items are on the same line
+        Nav.style.alignItems = 'center'; // Vertically center the items
+        Nav.style.overflowX = 'auto'; // Allow horizontal scrolling if needed
+        Nav.style.marginLeft = 'auto'; // Push the nav to the right side
 
         // Create a clickable link or button that triggers list_Apps(WebSite_id)
-        const appNavButton = document.createElement('button');
-        appNavButton.className = 'btn btn-link'; // Style it as a link
-        appNavButton.innerHTML = '<h5>Apps</h5>';
-        appNavButton.onclick = function() {
+        const NavButton = document.createElement('button');
+        NavButton.className = 'btn btn-link'; // Style it as a link
+        NavButton.innerHTML = '<h5>Apps</h5>';
+        NavButton.onclick = function() {
             list_Apps(WebSite_id); // Call the function when clicked
         };
 
         // Create a span to display the app name, not clickable
-        const appNameSpan = document.createElement('span');
-        appNameSpan.style.flexGrow = '1'; // Allow the app name to grow within the available space
-        appNameSpan.style.marginLeft = '1px'; // Add space between "Apps" and the app name
-        appNameSpan.style.whiteSpace = 'nowrap'; // Prevent wrapping of the text
-        appNameSpan.style.overflow = 'hidden'; // Hide any overflow if the text is too long
-        appNameSpan.style.textOverflow = 'ellipsis'; // Add ellipsis if the text is too long
-        appNameSpan.innerHTML = `<h5>/ ${function_data.appName}</h5>`;
+        const NameSpan = document.createElement('span');
+        NameSpan.style.flexGrow = '1'; // Allow the app name to grow within the available space
+        NameSpan.style.marginLeft = '10px'; // Add space between "Apps" and the app name
+        NameSpan.style.whiteSpace = 'nowrap'; // Prevent wrapping of the text
+        NameSpan.style.overflow = 'hidden'; // Hide any overflow if the text is too long
+        NameSpan.style.textOverflow = 'ellipsis'; // Add ellipsis if the text is too long
+        NameSpan.innerHTML = `<h5>/ ${function_data.appName}</h5>`;
 
         // Append the button to the appNav
-        appNav.appendChild(appNavButton);
-        appNav.appendChild(appNameSpan);
+        Nav.appendChild(NavButton);
+        Nav.appendChild(NameSpan);
 
         // Append both to the button container
-        buttonContainer.appendChild(addAppButton);
-        buttonContainer.appendChild(appNav);
+        buttonContainer.appendChild(addfunctionButton);
+        buttonContainer.appendChild(addModelButton);
+        buttonContainer.appendChild(Nav);
 
         // Append the button container to the website content
-        websiteTabContent.appendChild(buttonContainer);
+        appTabContent.appendChild(buttonContainer);
 
         // Create a container for the apps
         const functionsContainer = document.createElement('div');
@@ -807,6 +812,7 @@ function list_Functions_for_app(app_id, WebSite_id) {
     })
     .catch(error => console.error('Error fetching app data:', error));
 }
+
 // Function to hide the modal
 function hideaddFunctiontoAppModal() {
     const modalElement = document.getElementById('addFunctiontoAppModal');
