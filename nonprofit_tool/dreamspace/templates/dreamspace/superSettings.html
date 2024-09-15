@@ -618,7 +618,7 @@ function list_Apps(WebSite_id) {
 
             const addAppButton = document.createElement('button');
             addAppButton.className = 'btn btn-primary';
-            addAppButton.innerHTML = 'Add New App';
+            addAppButton.innerHTML = 'New App';
             addAppButton.onclick = function() {
                 $('#updateAddAppTagsContainer').empty();
                 document.getElementById('hiddenWebsiteId').value = `${WebSite_id}`;
@@ -626,8 +626,15 @@ function list_Apps(WebSite_id) {
                 modal.show();
             };
 
+            const addGolbalAppButton = document.createElement('button');
+            addGolbalAppButton.className = 'btn btn-primary';
+            addGolbalAppButton.innerHTML = 'Gobal Apps';
+            addGolbalAppButton.onclick = function() {
+                listGlobalAppsForWebsite(WebSite_id);
+            };
             // Append both buttons to the button container
             buttonContainer.appendChild(addAppButton);
+            buttonContainer.appendChild(addGolbalAppButton);
             websiteTabContent.appendChild(buttonContainer);
 
             // Create a container for the apps
@@ -871,6 +878,9 @@ function listGlobalAppsForWebsite(WebSite_id) {
 
                 globalAppContainer.appendChild(appButton);
             });
+            const modal = new bootstrap.Modal(document.getElementById('addGlobalApptoDreamSpaceModal'));
+            modal.show();
+
         })
         .catch(error => console.error('Error fetching global apps:', error));
 }
