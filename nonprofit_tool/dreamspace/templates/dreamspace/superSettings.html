@@ -75,14 +75,14 @@
     <!-- Tab navigation -->
     <ul class="nav nav-tabs" id="websiteTabs" role="tablist">
         <li class="nav-item" role="presentation">
-            <a class="nav-link active" id="dreamspace-tab" data-bs-toggle="tab" href="#dreamspace" role="tab" aria-controls="dreamspace" aria-selected="true">DreamSpace</a>
+            <a class="nav-link active" id="dreamspace-tab" data-bs-toggle="tab" href="#dreamspace-content" role="tab" aria-controls="dreamspace" aria-selected="true">DreamSpace</a>
         </li>
     </ul>
 
     <!-- Tab content -->
     <div class="tab-content" id="websiteTabContent">
         <!-- DreamSpace tab -->
-        <div class="tab-pane fade show active" id="dreamspace" role="tabpanel" aria-labelledby="dreamspace-tab">
+        <div class="tab-pane fade show active" id="dreamspace-content" role="tabpanel" aria-labelledby="dreamspace-tab">
             <!-- Add App Button and Search Input -->
             <div class="d-flex justify-content-between align-items-center mb-3">
                 <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addDreamSpaceModal">
@@ -96,8 +96,6 @@
             </div>
             <div id="WebSiteList" class="mt-3"></div>
         </div>
-
-        <!-- Dynamic tabs for each website will be inserted here -->
     </div>
 </div>
 
@@ -273,7 +271,7 @@
 
 <script>
 
-document.getElementById('dreamspace-tab').addEventListener('click', function() {
+document.getElementById('main-dreamspace-tab').addEventListener('click', function() {
     loadWebsitesList();
 });
 let websitesData = [];
@@ -503,7 +501,9 @@ function loadLogs(id) {
 
 
 function openEditTab(id) {
+
     const existingTab = document.getElementById(`edit-tab-${id}`);
+    const Tab = document.getElementById(`edit-${id}`);
     
     if (existingTab) {
         // If the tab already exists, activate it
@@ -544,6 +544,7 @@ function openEditTab(id) {
             editBox.className = 'card mb-2';
             editBox.style.border = 'none';
             editBox.style.boxShadow = 'none';
+            editBox.id = `edit-Box-${id}`;
             editBox.style.width = '100%'; // Set the width to make it narrower
             editBox.style.position = 'relative'; // Enable positioning of the hamburger button
             
@@ -665,7 +666,9 @@ function list_Apps(WebSite_id) {
             };
             // Append both buttons to the button container
             buttonContainer.appendChild(addAppButton);
-            buttonContainer.appendChild(addGolbalAppButton);
+            if (app_data.has_global_apps_not_in_website) {
+                buttonContainer.appendChild(addGolbalAppButton);
+            }
             websiteTabContent.appendChild(buttonContainer);
 
             // Create a container for the apps
@@ -955,6 +958,22 @@ function list_Functions_for_app(app_id, WebSite_id) {
 }
 
 // Function to hide the modal
+function hideAddAppModal() {
+    const modalElement = document.getElementById('addApptoDreamSpaceModal');
+    const modal = new bootstrap.Modal(modalElement);
+
+    if (modalElement.classList.contains('show')) {
+        modal.hide(); // Use Bootstrap's hide method
+        modalElement.classList.remove('show'); // Ensure 'show' class is removed
+        modalElement.style.display = 'none'; // Force-hide the modal if it's stuck
+        document.body.classList.remove('modal-open'); // Remove 'modal-open' class from body
+        document.querySelector('.modal-backdrop')?.remove(); // Remove backdrop if present
+    } else {
+        console.info("Modal is already hidden");
+    }
+}
+
+// Function to hide the modal
 function hideaddFunctiontoAppModal() {
     const modalElement = document.getElementById('addFunctiontoAppModal');
     const modal = new bootstrap.Modal(modalElement);
@@ -1078,29 +1097,32 @@ function hideAddGlobalAppModal() {
 
 
 function closeWebsiteTabContent(id) {
-    // Remove the tab link
+    // Get the tab link and pane elements
     const tabLink = document.getElementById(`edit-tab-${id}`);
     const tabPane = document.getElementById(`edit-${id}`);
+    const dreamSpaceTabLink = document.getElementById('dreamspace-tab');
+    const dreamSpaceTabPane = document.getElementById('dreamspace-content');
 
-    if (tabLink) {
+    // Check if the tabLink exists and if it's not the dreamSpaceTabLink
+    if (tabLink && tabLink !== dreamSpaceTabLink) {
         // Remove the tab link
         tabLink.parentElement.remove();
+    }
 
-        // Remove the corresponding tab pane
-        if (tabPane) {
-            tabPane.remove();
-        }
+    // Check if the tabPane exists and if it's not the dreamSpaceTabPane
+    if (tabPane && tabPane !== dreamSpaceTabPane) {
+        tabPane.remove();
+    }
 
-        // Activate the first tab if available
-        const firstTab = document.querySelector('#websiteTabs .nav-link');
-        if (firstTab) {
-            const firstTabPaneId = firstTab.getAttribute('href').substring(1);
-            const firstTabPane = document.getElementById(firstTabPaneId);
-            if (firstTabPane) {
-                firstTab.classList.add('active');
-                firstTabPane.classList.add('show', 'active');
-            }
-        }
+    // Ensure dreamSpaceTabLink has the 'active' class
+    if (dreamSpaceTabLink) {
+        dreamSpaceTabLink.classList.add('nav-link', 'active');
+    }
+
+    // Ensure dreamSpaceTabPane has the correct classes and scroll into view
+    if (dreamSpaceTabPane) {
+        dreamSpaceTabPane.classList.add('tab-pane', 'fade', 'show', 'active');
+        dreamSpaceTabPane.scrollIntoView({ behavior: 'smooth' });
     }
 }
 // Add event listener to the search input

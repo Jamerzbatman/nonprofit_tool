@@ -31,6 +31,11 @@ def list_app(request, website_id):
         has_error=Exists(error_subquery)
     ).order_by('-has_error', '-updated_at')
 
+        # Get global apps
+    has_global_apps_not_in_website = App.objects.filter(is_global=True).exclude(website_relation=app_website).exists()
+
+
+
     # Format app names and include tags and error status
     app_data = [
         {
@@ -44,7 +49,10 @@ def list_app(request, website_id):
         for app in apps
     ]
         
-    return JsonResponse({'apps': app_data})
+    return JsonResponse({
+        'apps': app_data,
+        'has_global_apps_not_in_website': has_global_apps_not_in_website
+    })
 
 def list_app_data(request, app_id):
     # Ensure website exists
@@ -102,7 +110,7 @@ def list_global_apps(request, website_id):
     global_apps = App.objects.filter(is_global=True).exclude(website_relation=website)
     
     # Prepare data to send in the response
-    apps_data = [{'id': app.id, 'name': app.name} for app in global_apps]
+    apps_data = [{'id': app.id, 'name': app.name.replace('_', ' ').title()} for app in global_apps]
     
     return JsonResponse({'global_apps': apps_data})
 
@@ -198,6 +206,9 @@ def add_function_to_app(request):
                     tags.append(tag)
             function.tags.set(tags)
 
+            web_site_instance = WebSite.objects.get(id=webSite_id)
+            web_site_instance.save()
+
             return JsonResponse({'success': True, 'function_id': function.id, 'app_id': app_id, 'webSite_id': webSite_id})
 
         except Exception as e:
@@ -245,7 +256,10 @@ def add_app_to_dreamspace(request):
                 app.website_relation.add(website)
             except WebSite.DoesNotExist:
                 return JsonResponse({'success': False, 'error': 'WebSite not found'}, status=404)
-        
+       
+        web_site_instance = WebSite.objects.get(id=website_id)
+        web_site_instance.save()
+
         return JsonResponse({'success': True, 'app_id': app.id, 'webSite_id': website_id})
     else:
         # Return form errors if the form is not valid
@@ -266,6 +280,9 @@ def add_model_to_app(request):
                 description=model_description,
                 app_relation=app_instance
             )
+
+            web_site_instance = WebSite.objects.get(id=webSite_id)
+            web_site_instance.save()
 
             return JsonResponse({'success': True, 'model_id': model.id, 'app_id': app_id, 'webSite_id': webSite_id})
 
