@@ -135,6 +135,19 @@ class FunctionVersion(models.Model):
         return f'{self.function.name} - v{self.version}'
 
 
+class Models(models.Model):
+    name = models.CharField(max_length=255)
+    packages = models.TextField(blank=True, null=True)
+    python = models.TextField(blank=True, null=True)
+    description = models.TextField(blank=True, null=True)
+    app_relation = models.ForeignKey(App, on_delete=models.CASCADE)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return self.name
+
+
 class Log(models.Model):
     message = models.TextField()  # The actual error message
     type = models.CharField(max_length=255)  # Type or category of the error

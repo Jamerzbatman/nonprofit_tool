@@ -6,7 +6,7 @@
 }
 
 .list-group-gray .list-group-item:hover {
-    background-color: transparent; /* Slightly darker gray on hover */
+    background-color: transparent;
 }
 
 .list-group-gray .list-group-item:first-child {
@@ -195,6 +195,7 @@
           <form id="addFunctiontoAppForm">
             {% csrf_token %}
             <input type="hidden" id="hiddenAppId" name="appId">
+            <input type="hidden" id="hiddenWebSiteId" name="webSiteId">
             <div class="mb-3">
               <label for="functionName" class="form-label">Function Name</label>
               <input type="text" class="form-control" name="functionName" id="functionName" placeholder="Enter function name">
@@ -217,7 +218,7 @@
             </div>
             <div class="mb-3 form-check">
                 <input type="checkbox" class="form-check-input" id="isGlobalFunction" name="isGlobal">
-                <label class="form-check-label" for="isGlobalFunction">Is this app global (for all websites)?</label>
+                <label class="form-check-label" id="isGlobalFunctionLable" for="isGlobalFunction">Is this function global (for all websites)?</label>
             </div>
             <button type="submit" class="btn btn-primary">Add</button>
           </form>
@@ -225,6 +226,35 @@
       </div>
     </div>
 </div>
+
+<!-- addModeltoAppModal -->
+<div class="modal fade" id="addModeltoAppModal" tabindex="-1" aria-labelledby="addModeltoAppModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="addModeltoAppModalLabel">Add New Model</h5>
+          <button type="button" onclick="hideAddModeltoAppModal()" class="btn-close" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <form id="addModeltoAppForm">
+            {% csrf_token %}
+            <input type="hidden" id="hiddenModelAppId" name="appId">
+            <input type="hidden" id="hiddenModelWebSiteId" name="webSiteId">
+            <div class="mb-3">
+              <label for="modelName" class="form-label">Model Name</label>
+              <input type="text" class="form-control" name="name" id="modelName" placeholder="Enter model name">
+            </div>
+            <div class="mb-3">
+              <label for="modelDescription" class="form-label">Model Description</label>
+              <textarea class="form-control" id="modelDescription" name="Description" rows="3" placeholder="Enter model description"></textarea>
+            </div>
+            <button type="submit" class="btn btn-primary">Add</button>
+          </form>
+        </div>
+      </div>
+    </div>
+</div>
+
 
 <div class="modal fade" id="addGlobalApptoDreamSpaceModal" tabindex="-1" aria-labelledby="addGlobalApptoDreamSpaceModalLabel" aria-hidden="true">
     <div class="modal-dialog">
@@ -516,7 +546,7 @@ function openEditTab(id) {
             editBox.style.boxShadow = 'none';
             editBox.style.width = '100%'; // Set the width to make it narrower
             editBox.style.position = 'relative'; // Enable positioning of the hamburger button
-
+            
             editBox.innerHTML = `
                 <div class="card-body" >
                     <ul class="nav nav-tabs mt-3" id="appTab-${id}" role="tablist">
@@ -537,11 +567,11 @@ function openEditTab(id) {
                         <div class="tab-pane fade show active" id="status-${id}" role="tabpanel" aria-labelledby="status-tab-${id}">
                             <div class="container mt-3">
                                 <div class="row">
-            
                                     <div class="col-12 mb-3">
                                         <h2>${website_data.name}</h2>
                                         <p class="text-muted">${website_data.description}</p>
                                         ${website_data.tags.length > 0 ? website_data.tags.map(tag => `<span class="badge bg-secondary m-1">${tag}</span>`).join('') : ''}                                    </div>
+                                    
                                 </div>
                                 <div class="row">
                                     <!-- Website Details -->
@@ -613,7 +643,7 @@ function list_Apps(WebSite_id) {
 
             // Create a container for the button
             const buttonContainer = document.createElement('div');
-            buttonContainer.id = 'button-container';
+            buttonContainer.id = `button-container-${WebSite_id}`;
             buttonContainer.style.marginBottom = '10px'; // Space between button and apps
 
             const addAppButton = document.createElement('button');
@@ -627,7 +657,7 @@ function list_Apps(WebSite_id) {
             };
 
             const addGolbalAppButton = document.createElement('button');
-            addGolbalAppButton.className = 'btn btn-primary';
+            addGolbalAppButton.className = 'btn btn-secondary';
             addGolbalAppButton.innerHTML = 'Gobal Apps';
             addGolbalAppButton.style.marginLeft = '5px';
             addGolbalAppButton.onclick = function() {
@@ -674,6 +704,7 @@ function list_Apps(WebSite_id) {
                 appBox.style.maxWidth = '500px'; // Set the maximum width of each card
                 appBox.style.position = 'relative'; // Enable positioning of the hamburger button
                 appBox.style.border = app.error ? '2px solid red' : (app.active ? '2px solid green' : '2px solid orange');
+                appBox.style.cursor = 'pointer';
                 appBox.innerHTML = `
                     <div class="card-body">
                         <div class="d-flex justify-content-between align-items-center">
@@ -695,9 +726,10 @@ function list_Apps(WebSite_id) {
         })
         .catch(error => console.error('Error fetching app data:', error));
 }
+
 function list_Functions_for_app(app_id, WebSite_id) {
 
-    fetch(`/dreamspace/list-functions/${app_id}/`)
+    fetch(`/dreamspace/list-app-data/${app_id}/`)
     .then(response => response.json())
     .then(function_data => {
         const appTabContent = document.getElementById(`backend-content-${WebSite_id}`);
@@ -718,8 +750,18 @@ function list_Functions_for_app(app_id, WebSite_id) {
         addfunctionButton.className = 'btn btn-primary';
         addfunctionButton.innerHTML = 'Add Function';
         addfunctionButton.onclick = function() {
-            $('#updateAddAppTagsContainer').empty();
+            $('#updateAddFunctionTagsContainer').empty();
+            document.getElementById('functionName').value = '';
+            document.getElementById('functionDescription').value = '';
+            document.getElementById('addFunction-tags-input').value = '';
             document.getElementById('hiddenAppId').value = `${app_id}`;
+            document.getElementById('hiddenWebSiteId').value = `${WebSite_id}`;
+            if (!function_data.is_global) {
+                document.getElementById('isGlobalFunction').style.display = 'none';
+                document.getElementById('isGlobalFunctionLable').style.display = 'none';
+            }else{
+                document.getElementById('isGlobalFunction').checked = true;
+            }
             const modal = new bootstrap.Modal(document.getElementById('addFunctiontoAppModal'));
             modal.show();
         };
@@ -729,8 +771,10 @@ function list_Functions_for_app(app_id, WebSite_id) {
         addModelButton.className = 'btn btn-secondary'; // Adjust the class if needed for styling
         addModelButton.innerHTML = 'Add Model';
         addModelButton.onclick = function() {
-            $('#updateAddModelTagsContainer').empty();
-            document.getElementById('hiddenModelId').value = `${app_id}`; // Adjust the ID as needed
+            document.getElementById('modelName').value = '';
+            document.getElementById('modelDescription').value = '';
+            document.getElementById('hiddenModelAppId').value = `${app_id}`;
+            document.getElementById('hiddenModelWebSiteId').value = `${WebSite_id}`;
             const modal = new bootstrap.Modal(document.getElementById('addModeltoAppModal'));
             modal.show();
         };
@@ -745,23 +789,28 @@ function list_Functions_for_app(app_id, WebSite_id) {
         // Create a clickable link or button that triggers list_Apps(WebSite_id)
         const NavButton = document.createElement('button');
         NavButton.className = 'btn btn-link'; // Style it as a link
-        NavButton.innerHTML = '<h5>Apps</h5>';
+        NavButton.style.display = 'flex';
+        NavButton.style.alignItems = 'center'; // Ensure the button is vertically centered
+        NavButton.innerHTML = '<h5>Apps</h5>'; // Remove extra margin from the <h5> tag
         NavButton.onclick = function() {
             list_Apps(WebSite_id); // Call the function when clicked
         };
 
         // Create a span to display the app name, not clickable
         const NameSpan = document.createElement('span');
-        NameSpan.style.flexGrow = '1'; // Allow the app name to grow within the available space
-        NameSpan.style.marginLeft = '10px'; // Add space between "Apps" and the app name
+        NameSpan.style.display = 'flex';
+        NameSpan.style.alignItems = 'center'; // Ensure the name is vertically centered
+        NameSpan.style.marginLeft = '5px'; // Add space between "Apps" and the app name
         NameSpan.style.whiteSpace = 'nowrap'; // Prevent wrapping of the text
         NameSpan.style.overflow = 'hidden'; // Hide any overflow if the text is too long
         NameSpan.style.textOverflow = 'ellipsis'; // Add ellipsis if the text is too long
-        NameSpan.innerHTML = `<h5>/ ${function_data.appName}</h5>`;
+        NameSpan.innerHTML = `<h5 style="display:inline; margin-left: 5px;">|&nbsp;&nbsp;&nbsp;&nbsp;${function_data.appName}</h5>`;
 
-        // Append the button to the appNav
+
+        // Append the button and name span to the navigation
         Nav.appendChild(NavButton);
         Nav.appendChild(NameSpan);
+
 
         // Append both to the button container
         buttonContainer.appendChild(addfunctionButton);
@@ -772,10 +821,11 @@ function list_Functions_for_app(app_id, WebSite_id) {
         appTabContent.appendChild(buttonContainer);
 
         // Create a container for the apps
-        const functionsContainer = document.createElement('div');
-        functionsContainer.style.display = 'flex';
-        functionsContainer.style.flexWrap = 'wrap';
-        functionsContainer.style.gap = '10px';
+        const addDataContainer = document.createElement('div');
+        addDataContainer.id = `functions-container-${WebSite_id}`;
+        addDataContainer.style.display = 'flex';
+        addDataContainer.style.flexWrap = 'wrap';
+        addDataContainer.style.gap = '10px';
 
         // Function to handle app clicks
         function handleAppClick(app_id, WebSite_id) {
@@ -786,19 +836,73 @@ function list_Functions_for_app(app_id, WebSite_id) {
             }
             
             // Hide all app cards
-            functionsContainer.style.display = 'none';
+            addDataContainer.style.display = 'none';
 
             list_Functions_for_app(app_id, WebSite_id)
         }
 
-        // Listing existing apps
+        // Create containers for functions and models
+        const functionsContainer = document.createElement('div');
+        functionsContainer.style.border = '2px solid #495057'; // Border color
+        functionsContainer.style.borderRadius = '5px'
+        functionsContainer.style.padding = '10px'; // Padding inside the border
+        functionsContainer.style.marginBottom = '20px'; // Space below the container
+        functionsContainer.style.width = '100%';
+        functionsContainer.style.display = 'flex';
+        functionsContainer.style.flexWrap = 'wrap';
+
+        // Add heading for functions
+        const functionsHeading = document.createElement('h5');
+        functionsHeading.textContent = 'Functions';
+        functionsContainer.appendChild(functionsHeading);
+
+        // Add a spacer element for spacing below the heading
+        const functionsSpacer = document.createElement('div');
+        functionsSpacer.style.width = '100%'; // Make the spacer full width
+        functionsSpacer.style.height = '10px'; // Adjust height as needed
+        functionsContainer.appendChild(functionsSpacer);       
+
+        // Create containers for models
+        const modelsContainer = document.createElement('div');
+        modelsContainer.style.border = '2px solid #495057'; // Border color
+        modelsContainer.style.borderRadius = '5px'
+        modelsContainer.style.padding = '10px'; // Padding inside the border
+        modelsContainer.style.marginBottom = '20px'; // Space below the container
+        modelsContainer.style.width = '100%';
+        modelsContainer.style.display = 'flex';
+        modelsContainer.style.flexWrap = 'wrap';
+
+        // Add heading for models
+        const modelsHeading = document.createElement('h5');
+        modelsHeading.textContent = 'Models';
+        modelsContainer.appendChild(modelsHeading);
+
+        // Add a spacer element for spacing below the heading
+        const modelsSpacer = document.createElement('div');
+        modelsSpacer.style.width = '100%'; // Make the spacer full width
+        modelsSpacer.style.height = '10px'; // Adjust height as needed
+        modelsContainer.appendChild(modelsSpacer);
+
+
+        // Add the containers to the main container (assumed to be `addDataContainer`)
+        if (function_data.functions_count > 0) {
+            addDataContainer.appendChild(functionsContainer);
+        }
+        if (function_data.models_count > 0) {
+            addDataContainer.appendChild(modelsContainer);
+        }
+
+        // Listing existing functions
         function_data.functions.forEach(functions => {
             const functionsBox = document.createElement('div');
             functionsBox.className = 'card mb-2';
             functionsBox.style.flex = '1 1 calc(33.33% - 10px)';
-            functionsBox.style.maxWidth = '500px'; // Set the maximum width of each card
+            functionsBox.style.maxWidth = '400px'; // Set the maximum width of each card
             functionsBox.style.position = 'relative'; // Enable positioning of the hamburger button
             functionsBox.style.border = functions.error ? '2px solid red' : (functions.active ? '2px solid green' : '2px solid orange');
+            functionsBox.style.marginRight = '10px';
+            functionsBox.style.cursor = 'pointer';
+
             functionsBox.innerHTML = `
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-center">
@@ -813,10 +917,39 @@ function list_Functions_for_app(app_id, WebSite_id) {
                 handleAppClick(app.id, WebSite_id);
             };
 
+            // Append each functionsBox to the functionsContainer
             functionsContainer.appendChild(functionsBox);
         });
 
-        websiteTabContent.appendChild(functionsContainer);
+        // Listing existing models
+        function_data.models.forEach(models => {
+            const modelsBox = document.createElement('div');
+            modelsBox.className = 'card mb-2';
+            modelsBox.style.flex = '1 1 calc(33.33% - 10px)';
+            modelsBox.style.maxWidth = '500px'; // Set the maximum width of each card
+            modelsBox.style.position = 'relative'; // Enable positioning of the hamburger button
+            modelsBox.style.marginRight = '10px';
+            modelsBox.style.cursor = 'pointer';
+            modelsBox.innerHTML = `
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="card-title" style="font-weight: bold;">${models.name}</h5>
+                    </div>
+                    <p class="card-text" style="color: #6c757d; font-size: 14px; margin-top: 10px;">${models.description}</p>
+                </div>
+            `;
+
+            // Add click event to modelsBox
+            modelsBox.onclick = function() {
+                handleAppClick(app.id, WebSite_id);
+            };
+
+            // Append each modelsBox to the modelsContainer
+            modelsContainer.appendChild(modelsBox);
+        });
+
+
+        appTabContent.appendChild(addDataContainer);
     })
     .catch(error => console.error('Error fetching app data:', error));
 }
@@ -836,10 +969,9 @@ function hideaddFunctiontoAppModal() {
         console.info("Modal is already hidden");
     }
 }
-
 // Function to hide the modal
-function hideAddAppModal() {
-    const modalElement = document.getElementById('addApptoDreamSpaceModal');
+function hideaddFunctiontoAppModal() {
+    const modalElement = document.getElementById('addFunctiontoAppModal');
     const modal = new bootstrap.Modal(modalElement);
 
     if (modalElement.classList.contains('show')) {
@@ -852,6 +984,23 @@ function hideAddAppModal() {
         console.info("Modal is already hidden");
     }
 }
+
+// Function to hide the modal
+function hideAddModeltoAppModal() {
+    const modalElement = document.getElementById('addModeltoAppModal');
+    const modal = new bootstrap.Modal(modalElement);
+
+    if (modalElement.classList.contains('show')) {
+        modal.hide(); // Use Bootstrap's hide method
+        modalElement.classList.remove('show'); // Ensure 'show' class is removed
+        modalElement.style.display = 'none'; // Force-hide the modal if it's stuck
+        document.body.classList.remove('modal-open'); // Remove 'modal-open' class from body
+        document.querySelector('.modal-backdrop')?.remove(); // Remove backdrop if present
+    } else {
+        console.info("Modal is already hidden");
+    }
+}
+
 function listGlobalAppsForWebsite(WebSite_id) {
     fetch(`/dreamspace/list-global-apps/${WebSite_id}`) // Fetching global apps
         .then(response => response.json())
@@ -1085,7 +1234,59 @@ $('#addAppTags').autocomplete({
         return false; // Prevents the value from being entered in the input field
     }
 });
+let addFunctionTags = [];
+// Initialize autocomplete
+$('#addFunctionTags').autocomplete({
+    source: function(request, response) {
+        $.ajax({
+            url: "{% url 'tag_autocomplete' %}", // Ensure this URL is correct
+            dataType: 'json',
+            data: {
+                term: request.term
+            },
+            success: function(data) {
+                response(data.tags); // Ensure `data.tags` is the correct path
+            },
+            error: function(xhr, status, error) {
+                console.error('Error:', error);
+                // Optionally show a message to the user
+            }
+        });
+    },
+    select: function(event, ui) {
+        if (!addFunctionTags.includes(ui.item.value)) {
+            addFunctionTags.push(ui.item.value);
+            $('#addFunctionTags').val('');
+            updateAddFunctionTags(); 
+        }
+        return false; 
+    }
+});
 
+// Function to update the hidden input and display tags
+function updateAddFunctionTags() {
+    $('#addFunction-tags-input').val(addFunctionTags.join(','));
+    
+    // Clear the existing tags container
+    $('#updateAddFunctionTagsContainer').empty();
+    
+    // Append each tag to the tags container
+    addFunctionTags.forEach(tag => {
+        $('#updateAddFunctionTagsContainer').append(`<span class="badge bg-secondary m-1">${tag}</span>`);
+    });
+}
+// Handle keydown event for addAppTags input
+$('#addFunctionTags').on('keydown', function(e) {
+    if (e.key === 'Enter') {
+        e.preventDefault();
+        const input = $(this).val().trim();
+        if (input !== '' && !addFunctionTags.includes(input)) {
+            addFunctionTags.push(input);
+            $(this).val('');
+            updateAddFunctionTags();
+        }
+    }
+});
 
 
 document.getElementById('AddDreamSpaceForm').addEventListener('submit', function(e) {
@@ -1153,6 +1354,69 @@ document.getElementById('addApptoDreamSpaceForm').addEventListener('submit', fun
     })
     
     .catch(error => alertMessage("Error: " + (error || "Failed to App Added to DreamSpace"), 'alert alert-danger'));
+
+});
+document.getElementById('addFunctiontoAppForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const form = e.target;
+    const formData = new FormData(form);
+    
+    fetch("{% url 'add_function_to_app' %}", {
+        method: "POST",
+        headers: {
+            'X-CSRFToken': formData.get('csrfmiddlewaretoken'),
+        },
+        body: formData,
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            list_Functions_for_app(data.app_id, data.webSite_id)
+            hideaddFunctiontoAppModal();
+            alertMessage("Function Added to App Successfullly", 'alert alert-success');
+        } else {            
+            if (data.errors) {
+                alertMessage("Error: " + (data.errors || "Failed to Function Added to App"), 'alert alert-danger');
+            } else if (data.error) {
+                alertMessage("Error: " + (data.error || "Failed to Function Added to App"), 'alert alert-danger');
+            }
+        }
+    })
+    
+    .catch(error => alertMessage("Error: " + (error || "Failed to Function Added to App"), 'alert alert-danger'));
+
+});
+
+document.getElementById('addModeltoAppForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const form = e.target;
+    const formData = new FormData(form);
+    
+    fetch("{% url 'add_model_to_app' %}", {
+        method: "POST",
+        headers: {
+            'X-CSRFToken': formData.get('csrfmiddlewaretoken'),
+        },
+        body: formData,
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            list_Functions_for_app(data.app_id, data.webSite_id)
+            hideAddModeltoAppModal();
+            alertMessage("Model Added to App Successfullly", 'alert alert-success');
+        } else {            
+            if (data.errors) {
+                alertMessage("Error: " + (data.errors || "Failed to Model Added to App"), 'alert alert-danger');
+            } else if (data.error) {
+                alertMessage("Error: " + (data.error || "Failed to Model Added to App"), 'alert alert-danger');
+            }
+        }
+    })
+    
+    .catch(error => alertMessage("Error: " + (error || "Failed to Model Added to App"), 'alert alert-danger'));
 
 });
 

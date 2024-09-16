@@ -1,10 +1,11 @@
 from .forms import WebSiteForm
 from django.http import JsonResponse
-from .models import WebSite, Tag, Log, App, Function
+from .models import WebSite, Tag, Log, App, Function, Models
 from .forms import WebSiteForm, AppForm
 from django.db.models import Exists, OuterRef, BooleanField
 from django.shortcuts import get_object_or_404
 import json
+import traceback
 
 
 def list_logs(request, website_id):
@@ -45,12 +46,11 @@ def list_app(request, website_id):
         
     return JsonResponse({'apps': app_data})
 
-def list_functions(request, app_id):
+def list_app_data(request, app_id):
     # Ensure website exists
-    function_app = App.objects.filter(id=app_id).first()
-
+    app = App.objects.filter(id=app_id).first()
     
-    if not function_app:
+    if not app:
         return JsonResponse({'error': 'App not found'}, status=404)
     
     # Filter apps associated with the given website and are active
@@ -61,6 +61,7 @@ def list_functions(request, app_id):
     ).annotate(
         has_error=Exists(error_subquery)
     ).order_by('-has_error', '-updated_at')
+    functions_count = functions.count()
 
     # Format app names and include tags and error status
     function_data = [
@@ -68,14 +69,25 @@ def list_functions(request, app_id):
             'id': function.id,
             'name': function.name.replace('_', ' ').title(),
             'description': function.description,
-            'tags': [tag.name for tag in app.tags.all()],
-            'error': app.has_error
+            'tags': [tag.name for tag in function.tags.all()],
+            'error': function.has_error
         }
         for function in functions
     ]
-    app_name = function_app.name.replace('_', ' ').title()
+    models = Models.objects.filter(app_relation=app_id).order_by('-updated_at')
+    models_count = models.count()
+    model_data = [
+        {
+            'id': model.id,
+            'name': model.name.replace('_', ' ').title(),
+            'description': model.description,
+        }
+        for model in models
+    ]
+    app_name = app.name.replace('_', ' ').title()
+    is_global = app.is_global
     
-    return JsonResponse({'functions': function_data, 'appName': app_name})
+    return JsonResponse({'is_global': is_global,'functions': function_data,'functions_count': functions_count,'models_count': models_count,'models': model_data, 'appName': app_name})
 
 
 
@@ -162,31 +174,36 @@ def list_website(request):
 
 def add_function_to_app(request):
     if request.method == 'POST':
+        try:
             app_id = request.POST.get('appId')
-            function_id = request.POST.get('funcitonId')
+            webSite_id = request.POST.get('webSiteId')
             function_name = request.POST.get('functionName', '').strip()
-            function_description = request.POST.get('appDescription', '').strip()
-            function_name = app_name.lower().replace(' ', '_')
-            tags = request.POST.getlist('tags')
-            if not function_name or not function_description:
-                return JsonResponse({'success': False, 'error': 'App function and description are required'}, status=400)
+            function_description = request.POST.get('Description', '').strip()
+
+            app_instance = App.objects.get(id=app_id)
+
             function = Function.objects.create(
                 name=function_name,
                 description=function_description,
-                app_relation=app_id
+                app_relation=app_instance
             )
+
+
             tags_list = request.POST.getlist('tags')
             tags = []
             for tag_name in tags_list:
-                tag_name = tag_name.strip()  # Remove any extra whitespace
-                if tag_name:  # Ensure tag_name is not empty
+                tag_name = tag_name.strip()
+                if tag_name:
                     tag, created = Tag.objects.get_or_create(name=tag_name)
                     tags.append(tag)
-            
-            # Associate tags with the App
             function.tags.set(tags)
 
-            return JsonResponse({'success': True, 'function_id': function.id, 'app_id': app_id})
+            return JsonResponse({'success': True, 'function_id': function.id, 'app_id': app_id, 'webSite_id': webSite_id})
+
+        except Exception as e:
+            print(f"Error occurred: {str(e)}")
+            return JsonResponse({'success': False, 'error': str(e)}, status=400)        
+
 
 
 def add_app_to_dreamspace(request):
@@ -234,7 +251,28 @@ def add_app_to_dreamspace(request):
         # Return form errors if the form is not valid
         return JsonResponse({'success': False, 'error': 'Invalid request method'}, status=400)
     
-        
+def add_model_to_app(request):
+    if request.method == 'POST':
+        try:
+            app_id = request.POST.get('appId')
+            webSite_id = request.POST.get('webSiteId')
+            model_name = request.POST.get('name', '').strip()
+            model_description = request.POST.get('Description', '').strip()
+
+            app_instance = App.objects.get(id=app_id)
+
+            model = Models.objects.create(
+                name=model_name,
+                description=model_description,
+                app_relation=app_instance
+            )
+
+            return JsonResponse({'success': True, 'model_id': model.id, 'app_id': app_id, 'webSite_id': webSite_id})
+
+        except Exception as e:
+            print(f"Error occurred: {str(e)}")
+            return JsonResponse({'success': False, 'error': str(e)}, status=400)        
+
 
 def add_website(request):
     if request.method == 'POST':
