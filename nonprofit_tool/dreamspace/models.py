@@ -82,9 +82,17 @@ class App(models.Model):
         """
         return self.is_global or not self.website_relation.exists()
     
+class Packages(models.Model):
+    name = models.CharField(max_length=255)
+    code =  models.TextField(blank=True, null=True)
+    installation = models.TextField(blank=True, null=True)
+    function_relation = models.ManyToManyField('Function', related_name='packages', blank=True)
+
+    def __str__(self):
+        return self.name
+
 class Function(models.Model):
     name = models.CharField(max_length=255)
-    packages = models.TextField(blank=True, null=True)
     python = models.TextField(blank=True, null=True)
     description = models.TextField(blank=True, null=True)
     tags = models.ManyToManyField(Tag)
@@ -107,7 +115,6 @@ class Function(models.Model):
                 # Only create a version if it's not the first save and original.python is not null
                 FunctionVersion.objects.create(
                     function=self,
-                    packages=original.packages,
                     python=original.python,
                     version=original.versions.count() + 1
                 )
@@ -116,7 +123,6 @@ class Function(models.Model):
 class FunctionVersion(models.Model):
     function = models.ForeignKey(Function, related_name='versions', on_delete=models.CASCADE)
     version = models.IntegerField()
-    packages = models.TextField()
     python = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
 

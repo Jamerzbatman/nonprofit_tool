@@ -1391,12 +1391,29 @@ document.getElementById('addFunctiontoAppForm').addEventListener('submit', funct
         },
         body: formData,
     })
+
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            list_Functions_for_app(data.app_id, data.webSite_id)
-            hideaddFunctiontoAppModal();
-            alertMessage("Function Added to App Successfullly", 'alert alert-success');
+            const webSite_id = data.webSite_id
+            const app_id = data.app_id
+            const function_id = data.function_id
+            fetch(`/open_ai/write-functon-code/${function_id}/`, {
+                method: "POST",
+                headers: {
+                    'X-CSRFToken': formData.get('csrfmiddlewaretoken'),
+                },
+            })    
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    list_Functions_for_app(app_id, webSite_id)
+                    hideaddFunctiontoAppModal();
+                    alertMessage("Function Added to App Successfullly", 'alert alert-success');
+
+                }
+            })
+
         } else {            
             if (data.errors) {
                 alertMessage("Error: " + (data.errors || "Failed to Function Added to App"), 'alert alert-danger');
