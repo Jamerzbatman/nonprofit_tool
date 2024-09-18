@@ -1383,7 +1383,12 @@ document.getElementById('addFunctiontoAppForm').addEventListener('submit', funct
     
     const form = e.target;
     const formData = new FormData(form);
-    
+    // Hide all content inside the modal and show a "Saving Function" message
+    const modalBody = document.querySelector('#addFunctiontoAppModal .modal-body');
+    const submitButton = form.querySelector('button[type="submit"]');
+    submitButton.style.display = 'none';
+    modalBody.innerHTML = '<div class="text-center"><p>Saving Function...</p></div>';
+
     fetch("{% url 'add_function_to_app' %}", {
         method: "POST",
         headers: {
@@ -1395,6 +1400,8 @@ document.getElementById('addFunctiontoAppForm').addEventListener('submit', funct
     .then(response => response.json())
     .then(data => {
         if (data.success) {
+            modalBody.innerHTML = '';
+            modalBody.innerHTML = '<div class="text-center"><p>Writing Code...</p></div>';
             const webSite_id = data.webSite_id
             const app_id = data.app_id
             const function_id = data.function_id
@@ -1432,6 +1439,12 @@ document.getElementById('addModeltoAppForm').addEventListener('submit', function
     
     const form = e.target;
     const formData = new FormData(form);
+
+    // Hide all content inside the modal and show a "Saving Function" message
+    const modalBody = document.querySelector('#addModeltoAppModal .modal-body');
+    const submitButton = form.querySelector('button[type="submit"]');
+    submitButton.style.display = 'none';
+    modalBody.innerHTML = '<div class="text-center"><p>Saving Model...</p></div>';
     
     fetch("{% url 'add_model_to_app' %}", {
         method: "POST",
@@ -1443,9 +1456,26 @@ document.getElementById('addModeltoAppForm').addEventListener('submit', function
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            list_Functions_for_app(data.app_id, data.webSite_id)
-            hideAddModeltoAppModal();
-            alertMessage("Model Added to App Successfullly", 'alert alert-success');
+            modalBody.innerHTML = '';
+            modalBody.innerHTML = '<div class="text-center"><p>Writing Code...</p></div>';
+            const webSite_id = data.webSite_id
+            const app_id = data.app_id
+            const model_id = data.model_id
+            fetch(`/open_ai/write-models-code/${model_id}/${app_id}/`, {
+                method: "POST",
+                headers: {
+                    'X-CSRFToken': formData.get('csrfmiddlewaretoken'),
+                },
+            })    
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    list_Functions_for_app(app_id, webSite_id)
+                    hideAddModeltoAppModal();
+                    alertMessage("Model Added to App Successfullly", 'alert alert-success');
+
+                }
+            })
         } else {            
             if (data.errors) {
                 alertMessage("Error: " + (data.errors || "Failed to Model Added to App"), 'alert alert-danger');

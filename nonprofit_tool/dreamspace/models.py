@@ -85,8 +85,10 @@ class App(models.Model):
 class Packages(models.Model):
     name = models.CharField(max_length=255)
     code =  models.TextField(blank=True, null=True)
-    installation = models.TextField(blank=True, null=True)
+    cmd = models.TextField(blank=True, null=True)
+    version = models.TextField(blank=True, null=True)
     function_relation = models.ManyToManyField('Function', related_name='packages', blank=True)
+    modeles_relation = models.ManyToManyField('Models', related_name='packages', blank=True)
 
     def __str__(self):
         return self.name
@@ -99,9 +101,11 @@ class Function(models.Model):
     is_global = models.BooleanField(default=False)
     is_active = models.BooleanField(default=True)
     app_relation = models.ForeignKey(App, on_delete=models.CASCADE)
+    modeles_relation = models.ManyToManyField('Models', related_name='function', blank=True)
     url = models.CharField(max_length=255, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    
 
     def __str__(self):
         return self.name
@@ -143,7 +147,6 @@ class FunctionVersion(models.Model):
 
 class Models(models.Model):
     name = models.CharField(max_length=255)
-    packages = models.TextField(blank=True, null=True)
     python = models.TextField(blank=True, null=True)
     description = models.TextField(blank=True, null=True)
     app_relation = models.ForeignKey(App, on_delete=models.CASCADE)

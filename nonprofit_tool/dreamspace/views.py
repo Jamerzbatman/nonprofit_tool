@@ -180,6 +180,10 @@ def list_website(request):
 
     return JsonResponse({'WebSite': formatted_WebSites})
 
+
+
+
+
 def add_function_to_app(request):
     if request.method == 'POST':
         try:
